@@ -1,0 +1,536 @@
+#!/bin/sh
+
+# ==============================
+# ANI-CLI LAUNCHER + INTI (Versi Bahasa Indonesia)
+# Dibuat oleh: Zhyllan Fyllah
+# Sekolah: TKJ1 - SMKN 1 LEMBAH MELINTANG
+# ==============================
+
+# --- TAMPILAN AWAL ---
+clear
+cat <<EOF
+
+    █████╗ ███╗   ██╗██╗      ██╗ ██████╗██╗  Z
+   ██╔══██╗████╗  ██║██║      ██║██╔════╝██║  H  ©
+   ███████║██╔██╗ ██║██║V.4.10██║██║     ██║  Y  2
+   ██╔══██║██║╚██╗██║██║    .3██║██║     ██║  -  0
+   ██║  ██║██║ ╚████║███████╗ ██║╚██████╗██║  K  2
+   ╚═╝  ╚═╝╚═╝  ╚═══╝╚══════╝ ╚═╝ ╚═════╝╚═╝  U  5
+         ANime LIst Command Interface         N
+   =========================================  
+ ANI-CLI Launcher Anime Look
+ Developer     : Zhyllan Fyllah
+ Sekolah       : TKJ1 - SMKN 1 LEMBAH MELINTANG
+ Sumber        : github.com/pystardust/ani-cli
+ Device/User   : $(whoami)
+ Waktu sekarang: $(date '+%a, %b %d, %Y  %r')
+===============================================
+
+EOF
+
+# ==============================
+# === ANI-CLI INTI (v4.10.3) ===
+# ==============================
+
+version_number="4.10.3"
+
+external_menu() {
+    rofi "$1" -sort -dmenu -i -width 1500 -p "$2" "$3"
+}
+
+launcher() {
+    [ "$use_external_menu" = "0" ] && [ -z "$1" ] && set -- "+m" "$2"
+    [ "$use_external_menu" = "0" ] && fzf "$1" --reverse --cycle --prompt "$2"
+    [ "$use_external_menu" = "1" ] && external_menu "$1" "$2" "$external_menu_args"
+}
+
+nth() {
+    stdin=$(cat -)
+    [ -z "$stdin" ] && return 1
+    line_count="$(printf "%s\n" "$stdin" | wc -l | tr -d "[:space:]")"
+    [ "$line_count" -eq 1 ] && printf "%s" "$stdin" | cut -f2,3 && return 0
+    prompt="$1"
+    multi_flag=""
+    [ $# -ne 1 ] && shift && multi_flag="$1"
+    line=$(printf "%s" "$stdin" | cut -f1,3 | tr '\t' ' ' | launcher "$multi_flag" "$prompt" | cut -d " " -f 1)
+    line_start=$(printf "%s" "$line" | head -n1)
+    line_end=$(printf "%s" "$line" | tail -n1)
+    [ -n "$line" ] || exit 1
+    if [ "$line_start" = "$line_end" ]; then
+        printf "%s" "$stdin" | grep -E '^'"${line}"'($|[[:space:]])' | cut -f2,3 || exit 1
+    else
+        printf "%s" "$stdin" | sed -n '/^'"${line_start}"'$/,/^'"${line_end}$"'/p' || exit 1
+    fi
+}
+
+die() {
+    printf "\33[2K\r\033[1;31m%s\033[0m\n" "$*" >&2
+    exit 1
+}
+
+help_info() {
+    printf "
+Penggunaan:
+  %s [opsi] [pencarian]
+  %s [pencarian] [opsi]
+  %s [opsi] [pencarian] [opsi]
+
+Opsi:
+  -c, --continue        Lanjutkan menonton dari riwayat
+  -d, --download        Unduh video alih-alih memutar
+  -D, --delete          Hapus riwayat
+  -l, --logview         Tampilkan log
+  -s, --syncplay        Tonton bersama teman via Syncplay
+  -S, --select-nth      Pilih entri ke-n
+  -q, --quality         Tentukan kualitas video
+  -v, --vlc             Gunakan VLC untuk memutar
+  -V, --version         Tampilkan versi skrip
+  -h, --help            Tampilkan pesan bantuan ini
+  -e, --episode         Tentukan nomor episode
+  -r, --range           Tentukan rentang episode
+  --dub                 Putar versi dub (bahasa lain)
+  --rofi                Gunakan rofi alih-alih fzf
+  --skip                Lewati intro (hanya mpv)
+  --no-detach           Jangan jalankan player di latar
+  --exit-after-play     Keluar setelah selesai memutar
+  --skip-title <judul>  Judul untuk ani-skip
+  -N, --nextep-countdown Tampilkan hitung mundur episode berikutnya
+  -U, --update          Perbarui skrip ini
+
+Contoh penggunaan:
+  %s -q 720p banana fish
+  %s --skip --skip-title \"one piece\" -S 2 one piece
+  %s -d -e 2 cyberpunk edgerunners
+  %s --vlc cyberpunk edgerunners -q 1080p -e 4
+  %s blue lock -e 5-6
+  %s -e \"5 6\" blue lock
+" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}"
+    exit 0
+}
+
+version_info() {
+    printf "%s\n" "$version_number"
+    exit 0
+}
+
+update_script() {
+    update="$(curl -s -A "$agent" "https://raw.githubusercontent.com/pystardust/ani-cli/master/ani-cli")" || die "Kesalahan koneksi"
+    update="$(printf '%s\n' "$update" | diff -u "$0" -)"
+    if [ -z "$update" ]; then
+        printf "Skrip sudah mutakhir :)\n"
+    else
+        if printf '%s\n' "$update" | patch "$0" -; then
+            printf "Skrip telah diperbarui\n"
+        else
+            die "Gagal memperbarui skrip!"
+        fi
+    fi
+    exit 0
+}
+
+dep_ch() {
+    for dep; do
+        command -v "${dep%% *}" >/dev/null || die "Program \"${dep%% *}\" tidak ditemukan. Harap instal terlebih dahulu."
+    done
+}
+
+where_iina() {
+    [ -e "/Applications/IINA.app/Contents/MacOS/iina-cli" ] && echo "/Applications/IINA.app/Contents/MacOS/iina-cli" && return 0
+    printf "iina"
+}
+
+where_mpv() {
+    command -v "flatpak" >/dev/null && flatpak info io.mpv.Mpv >/dev/null 2>&1 && printf "flatpak_mpv" && return 0
+    printf "mpv"
+}
+
+agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/121.0"
+allanime_refr="https://allmanga.to"
+allanime_base="allanime.day"
+allanime_api="https://api.${allanime_base}"
+mode="${ANI_CLI_MODE:-sub}"
+download_dir="${ANI_CLI_DOWNLOAD_DIR:-.}"
+log_episode="${ANI_CLI_LOG:-1}"
+quality="${ANI_CLI_QUALITY:-best}"
+
+case "$(uname -a | cut -d " " -f 1,3-)" in
+    *Darwin*) player_function="${ANI_CLI_PLAYER:-$(where_iina)}" ;;
+    *ndroid*) player_function="${ANI_CLI_PLAYER:-android_mpv}" ;;
+    *MINGW* | *WSL2*) player_function="${ANI_CLI_PLAYER:-mpv.exe}" ;;
+    *ish*) player_function="${ANI_CLI_PLAYER:-iSH}" ;;
+    *) player_function="${ANI_CLI_PLAYER:-$(where_mpv)}" ;;
+esac
+
+no_detach="${ANI_CLI_NO_DETACH:-0}"
+exit_after_play="${ANI_CLI_EXIT_AFTER_PLAY:-0}"
+use_external_menu="${ANI_CLI_EXTERNAL_MENU:-0}"
+external_menu_normal_window="${ANI_CLI_EXTERNAL_MENU_NORMAL_WINDOW:-0}"
+skip_intro="${ANI_CLI_SKIP_INTRO:-0}"
+skip_title="$ANI_CLI_SKIP_TITLE"
+[ -t 0 ] || use_external_menu=1
+
+hist_dir="${ANI_CLI_HIST_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/ani-cli}"
+[ ! -d "$hist_dir" ] && mkdir -p "$hist_dir"
+histfile="$hist_dir/ani-hsts"
+[ ! -f "$histfile" ] && : >"$histfile"
+search="${ANI_CLI_DEFAULT_SOURCE:-scrape}"
+
+# Parse argumen
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -v | --vlc)
+            case "$(uname -a | cut -d " " -f 1,3-)" in
+                *ndroid*) player_function="android_vlc" ;;
+                MINGW* | *WSL2*) player_function="vlc.exe" ;;
+                *ish*) player_function="iSH" ;;
+                *) player_function="vlc" ;;
+            esac ;;
+        -s | --syncplay)
+            case "$(uname -s)" in
+                Darwin*) player_function="/Applications/Syncplay.app/Contents/MacOS/syncplay" ;;
+                MINGW* | *Msys)
+                    export PATH="$PATH:/c/Program Files (x86)/Syncplay/"
+                    player_function="syncplay.exe" ;;
+                *) player_function="syncplay" ;;
+            esac ;;
+        -q | --quality)
+            [ $# -lt 2 ] && die "argumen hilang untuk --quality!"
+            quality="$2"; shift ;;
+        -S | --select-nth)
+            [ $# -lt 2 ] && die "argumen hilang untuk --select-nth!"
+            index="$2"; shift ;;
+        -c | --continue) search=history ;;
+        -d | --download)
+            [ "$player_function" = "iSH" ] && iSH_DownFix="--async-dns=false"
+            player_function=download ;;
+        -D | --delete) : >"$histfile"; exit 0 ;;
+        -l | --logview)
+            case "$(uname -s)" in
+                Darwin*) log show --predicate 'process == "logger"' ;;
+                Linux*) journalctl -t ani-cli ;;
+                *) die "Log tidak didukung di sistem ini" ;;
+            esac; exit 0 ;;
+        -V | --version) version_info ;;
+        -h | --help) help_info ;;
+        -e | --episode | -r | --range)
+            [ $# -lt 2 ] && die "argumen hilang untuk --episode!"
+            ep_no="$2"; shift ;;
+        --dub) mode="dub" ;;
+        --no-detach) no_detach=1 ;;
+        --exit-after-play) exit_after_play=1 && no_detach=1 ;;
+        --rofi) use_external_menu=1 ;;
+        --skip) skip_intro=1 ;;
+        --skip-title)
+            [ $# -lt 2 ] && die "argumen hilang untuk --skip-title!"
+            skip_title="$2"; shift ;;
+        -N | --nextep-countdown) search=nextep ;;
+        -U | --update) update_script ;;
+        *) query="$(printf "%s" "$query $1" | sed "s|^ ||;s| |+|g")" ;;
+    esac
+    shift
+done
+
+[ "$use_external_menu" = "0" ] && multi_selection_flag="${ANI_CLI_MULTI_SELECTION:-"-m"}"
+[ "$use_external_menu" = "1" ] && multi_selection_flag="${ANI_CLI_MULTI_SELECTION:-"-multi-select"}"
+[ "$external_menu_normal_window" = "1" ] && external_menu_args="-normal-window"
+
+# Cek dependensi
+dep_ch "curl" "sed" "grep" || true
+[ "$skip_intro" = 1 ] && (dep_ch "ani-skip" || true)
+dep_ch "fzf" || true
+
+case "$player_function" in
+    debug) ;;
+    download) dep_ch "ffmpeg" "aria2c" ;;
+    android*|*iSH*) ;; # skip player check
+    flatpak_mpv) ;; # handled in where_mpv
+    *) dep_ch "$player_function" ;;
+esac
+
+# === FUNGSI INTI (disingkat agar tidak terlalu panjang, tapi tetap lengkap) ===
+# Semua fungsi asli seperti get_links, search_anime, play_episode, dll tetap dipertahankan
+# dengan teks output tetap dalam Bahasa Inggris teknis (URL, API, dll), 
+# namun prompt pengguna & pesan ke pengguna sudah diterjemahkan.
+
+# ... [FUNGSI-FUNGSI INTI DI BAWAH INI ADALAH SAMA SEPERTI VERSI ASLI, 
+#     KARENA PENGGUNAAN TEKNIS & ERROR HANDLING BIASANYA TETAP DALAM BAHASA INGGRIS.
+#     TAPI SEMUA PROMPT INTERAKTIF SUDAH DIUBAH KE BAHASA INDONESIA DI BAWAH.] ...
+
+get_links() {
+    response="$(curl -e "$allanime_refr" -s "https://${allanime_base}$*" -A "$agent")"
+    episode_link="$(printf '%s' "$response" | sed 's|},{|\n|g' | sed -nE 's|.*link":"([^"]*)".*"resolutionStr":"([^"]*)".*|\2 >\1|p;s|.*hls","url":"([^"]*)".*"hardsub_lang":"en-US".*|\1|p')"
+    case "$episode_link" in
+        *repackager.wixmp.com*)
+            extract_link=$(printf "%s" "$episode_link" | cut -d'>' -f2 | sed 's|repackager.wixmp.com/||g;s|\.urlset.*||g')
+            for j in $(printf "%s" "$episode_link" | sed -nE 's|.*/,([^/]*),/mp4.*|\1|p' | tr ',' '\n'); do
+                printf "%s >%s\n" "$j" "$extract_link" | sed "s|,[^/]*|${j}|g"
+            done | sort -nr ;;
+        *master.m3u8*)
+            m3u8_refr=$(printf '%s' "$response" | sed -nE 's|.*Referer":"([^"]*)".*|\1|p') && printf "m3u8_refr >$m3u8_refr\n" >"$cache_dir/m3u8_refr"
+            extract_link=$(printf "%s" "$episode_link" | head -1 | cut -d'>' -f2)
+            relative_link=$(printf "%s" "$extract_link" | sed 's|[^/]*$||')
+            m3u8_streams="$(curl -e "$m3u8_refr" -s "$extract_link" -A "$agent")"
+            printf "%s" "$m3u8_streams" | grep -q "EXTM3U" && printf "%s" "$m3u8_streams" | sed 's|^#EXT-X-STREAM.*x||g; s|,.*|p|g; /^#/d; $!N; s|\n| >|;/EXT-X-I-FRAME/d' |
+                sed "s|>|cc>${relative_link}|g" | sort -nr
+            printf '%s' "$response" | sed -nE 's|.*"subtitles":\[\{"lang":"en","label":"English","default":"default","src":"([^"]*)".*|subtitle >\1|p' >"$cache_dir/suburl" ;;
+        *) [ -n "$episode_link" ] && printf "%s\n" "$episode_link" ;;
+    esac
+    printf "%s" "$*" | grep -q "tools.fast4speed.rsvp" && printf "Yt >$*\n"
+    printf "\033[1;32m%s\033[0m Tautan berhasil diambil\n" "$provider_name" 1>&2
+}
+
+provider_init() {
+    provider_name=$1
+    provider_id=$(printf "%s" "$resp" | sed -n "$2" | head -1 | cut -d':' -f2 | sed 's/../&\
+/g' | sed 's/^79$/A/g;s/^7a$/B/g;s/^7b$/C/g;s/^7c$/D/g;s/^7d$/E/g;s/^7e$/F/g;s/^7f$/G/g;s/^70$/H/g;s/^71$/I/g;s/^72$/J/g;s/^73$/K/g;s/^74$/L/g;s/^75$/M/g;s/^76$/N/g;s/^77$/O/g;s/^68$/P/g;s/^69$/Q/g;s/^6a$/R/g;s/^6b$/S/g;s/^6c$/T/g;s/^6d$/U/g;s/^6e$/V/g;s/^6f$/W/g;s/^60$/X/g;s/^61$/Y/g;s/^62$/Z/g;s/^59$/a/g;s/^5a$/b/g;s/^5b$/c/g;s/^5c$/d/g;s/^5d$/e/g;s/^5e$/f/g;s/^5f$/g/g;s/^50$/h/g;s/^51$/i/g;s/^52$/j/g;s/^53$/k/g;s/^54$/l/g;s/^55$/m/g;s/^56$/n/g;s/^57$/o/g;s/^48$/p/g;s/^49$/q/g;s/^4a$/r/g;s/^4b$/s/g;s/^4c$/t/g;s/^4d$/u/g;s/^4e$/v/g;s/^4f$/w/g;s/^40$/x/g;s/^41$/y/g;s/^42$/z/g;s/^08$/0/g;s/^09$/1/g;s/^0a$/2/g;s/^0b$/3/g;s/^0c$/4/g;s/^0d$/5/g;s/^0e$/6/g;s/^0f$/7/g;s/^00$/8/g;s/^01$/9/g;s/^15$/-/g;s/^16$/./g;s/^67$/_/g;s/^46$/~/g;s/^02$/:/g;s/^17$/\//g;s/^07$/?/g;s/^1b$/#/g;s/^63$/\[/g;s/^65$/\]/g;s/^78$/@/g;s/^19$/!/g;s/^1c$/$/g;s/^1e$/&/g;s/^10$/\(/g;s/^11$/\)/g;s/^12$/*/g;s/^13$/+/g;s/^14$/,/g;s/^03$/;/g;s/^05$/=/g;s/^1d$/%/g' | tr -d '\n' | sed "s/\/clock/\/clock\.json/")
+}
+
+generate_link() {
+    case $1 in
+        1) provider_init "wixmp" "/Default :/p" ;;
+        2) provider_init "youtube" "/Yt-mp4 :/p" ;;
+        3) provider_init "sharepoint" "/S-mp4 :/p" ;;
+        *) provider_init "hianime" "/Luf-Mp4 :/p" ;;
+    esac
+    [ -n "$provider_id" ] && get_links "$provider_id"
+}
+
+select_quality() {
+    printf '%s' "$player_function" | cut -f1 -d" " | grep -qE '(android|iSH|vlc)' && links=$(printf '%s' "$links" | sed '/cc>/d;/subtitle >/d;/m3u8_refr >/d')
+    printf '%s' "$player_function" | cut -f1 -d" " | grep -qE '(android|iSH)' && links=$(printf '%s' "$links" | sed '/Yt >/d')
+    case "$1" in
+        best) result=$(printf "%s" "$links" | head -n1) ;;
+        worst) result=$(printf "%s" "$links" | grep -E '^[0-9]{3,4}' | tail -n1) ;;
+        *) result=$(printf "%s" "$links" | grep -m 1 "$1") ;;
+    esac
+    [ -z "$result" ] && printf "Kualitas tidak ditemukan, menggunakan kualitas terbaik\n" 1>&2 && result=$(printf "%s" "$links" | head -n1)
+    printf '%s' "$result" | grep -q "cc>" && subtitle="$(printf '%s' "$links" | sed -nE 's|subtitle >(.*)|\1|p')" && [ -n "$subtitle" ] && subs_flag="--sub-file=$subtitle"
+    printf '%s' "$result" | grep -q "cc>" && m3u8_refr="$(printf '%s' "$links" | sed -nE 's|m3u8_refr >(.*)|\1|p')" && refr_flag="--referrer=$m3u8_refr"
+    printf "%s" "$result" | grep -q "tools.fast4speed.rsvp" && refr_flag="--referrer=$allanime_refr"
+    ! (printf '%s' "$result" | grep -qE "(cc>|tools.fast4speed.rsvp)") && unset refr_flag
+    ! (printf '%s' "$result" | grep -q "cc>") && unset subs_flag
+    episode=$(printf "%s" "$result" | cut -d'>' -f2)
+}
+
+get_episode_url() {
+    episode_embed_gql='query ($showId: String!, $translationType: VaildTranslationTypeEnumType!, $episodeString: String!) { episode( showId: $showId translationType: $translationType episodeString: $episodeString ) { episodeString sourceUrls }}'
+    resp=$(curl -e "$allanime_refr" -s -G "${allanime_api}/api" --data-urlencode "variables={\"showId\":\"$id\",\"translationType\":\"$mode\",\"episodeString\":\"$ep_no\"}" --data-urlencode "query=$episode_embed_gql" -A "$agent" | tr '{}' '\n' | sed 's|\\u002F|\/|g;s|\\||g' | sed -nE 's|.*sourceUrl":"--([^"]*)".*sourceName":"([^"]*)".*|\2 :\1|p')
+    cache_dir="$(mktemp -d)"
+    providers="1 2 3 4"
+    for provider in $providers; do generate_link "$provider" >"$cache_dir/$provider" & done
+    wait
+    links=$(cat "$cache_dir"/* | sort -g -r -s)
+    rm -r "$cache_dir"
+    select_quality "$quality"
+    if printf "%s" "$ep_list" | grep -q "^$ep_no$"; then
+        [ -z "$episode" ] && die "Episode telah rilis, tetapi tidak ada sumber yang valid!"
+    else
+        [ -z "$episode" ] && die "Episode belum rilis!"
+    fi
+}
+
+search_anime() {
+    search_gql='query( $search: SearchInput $limit: Int $page: Int $translationType: VaildTranslationTypeEnumType $countryOrigin: VaildCountryOriginEnumType ) { shows( search: $search limit: $limit page: $page translationType: $translationType countryOrigin: $countryOrigin ) { edges { _id name availableEpisodes __typename } }}'
+    curl -e "$allanime_refr" -s -G "${allanime_api}/api" --data-urlencode "variables={\"search\":{\"allowAdult\":false,\"allowUnknown\":false,\"query\":\"$1\"},\"limit\":40,\"page\":1,\"translationType\":\"$mode\",\"countryOrigin\":\"ALL\"}" --data-urlencode "query=$search_gql" -A "$agent" | sed 's|Show|\n|g' | sed -nE "s|.*_id\":\"([^\"]*)\",\"name\":\"(.+)\",.*${mode}\":([1-9][^,]*).*|\1	\2 (\3 episode)|p" | sed 's/\\"//g'
+}
+
+time_until_next_ep() {
+    animeschedule="https://animeschedule.net"
+    query="$(printf "%s\n" "$*" | tr ' ' '+')"
+    curl -s -G "$animeschedule/api/v3/anime" --data "q=${query}" | sed 's|"id"|\n|g' | sed -nE 's|.*,"route":"([^"]*)","premier.*|\1|p' | while read -r anime; do
+        data=$(curl -s "$animeschedule/anime/$anime" | sed '1,/"anime-header-list-buttons-wrapper"/d' | sed -nE 's|.*countdown-time-raw" datetime="([^"]*)">.*|Next Raw Release: \1|p;s|.*countdown-time" datetime="([^"]*)">.*|Next Sub Release: \1|p;s|.*english-title">([^<]*)<.*|English Title: \1|p;s|.*main-title".*>([^<]*)<.*|Japanese Title: \1|p')
+        status="Berlangsung"; color="33"
+        ! (printf "%s\n" "$data" | grep -q "Next Raw Release:") && status="Selesai"; color="32"
+        printf "%s\nStatus:  \033[1;%sm%s\033[0m\n---\n" "$data" "$color" "$status"
+    done
+    exit 0
+}
+
+episodes_list() {
+    episodes_list_gql='query ($showId: String!) { show( _id: $showId ) { _id availableEpisodesDetail }}'
+    curl -e "$allanime_refr" -s -G "${allanime_api}/api" --data-urlencode "variables={\"showId\":\"$*\"}" --data-urlencode "query=$episodes_list_gql" -A "$agent" | sed -nE "s|.*$mode\":\[([0-9.\",]*)\].*|\1|p" | tr ',' '\n' | tr -d '"' | sort -n
+}
+
+process_hist_entry() {
+    ep_list=$(episodes_list "$id")
+    latest_ep=$(printf "%s\n" "$ep_list" | tail -n1)
+    title=$(printf "%s\n" "$title" | sed "s|[0-9]\+ episode|${latest_ep} episode|")
+    ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null
+    [ -n "$ep_no" ] && printf "%s\t%s - episode %s\n" "$id" "$title" "$ep_no"
+}
+
+update_history() {
+    if grep -q -- "$id" "$histfile"; then
+        sed -E "s|^[^	]+	${id}	[^	]+$|${ep_no}	${id}	${title}|" "$histfile" >"${histfile}.new"
+    else
+        cp "$histfile" "${histfile}.new"
+        printf "%s\t%s\t%s\n" "$ep_no" "$id" "$title" >>"${histfile}.new"
+    fi
+    mv "${histfile}.new" "$histfile"
+}
+
+download() {
+    [ -n "$subtitle" ] && curl -s "$subtitle" -o "$download_dir/$2.vtt"
+    case $1 in
+        *m3u8*)
+            if command -v "yt-dlp" >/dev/null; then
+                yt-dlp --referer "$m3u8_refr" "$1" --no-skip-unavailable-fragments --fragment-retries infinite -N 16 -o "$download_dir/$2.mp4"
+            else
+                ffmpeg -referer "$m3u8_refr" -loglevel error -stats -i "$1" -c copy "$download_dir/$2.mp4"
+            fi ;;
+        *)
+            aria2c --referer="$allanime_refr" --enable-rpc=false --check-certificate=false --continue $iSH_DownFix --summary-interval=0 -x 16 -s 16 "$1" --dir="$download_dir" -o "$2.mp4" --download-result=hide ;;
+    esac
+}
+
+play_episode() {
+    [ "$log_episode" = 1 ] && [ "$player_function" != "debug" ] && [ "$player_function" != "download" ] && command -v logger >/dev/null && logger -t ani-cli "${allanime_title}${ep_no}"
+    [ "$skip_intro" = 1 ] && skip_flag="$(ani-skip -q "$mal_id" -e "$ep_no")"
+    [ -z "$episode" ] && get_episode_url
+    case "$player_function" in
+        debug)
+            printf "Semua tautan:\n%s\nTautan terpilih:\n%s\n" "$links" "$episode" ;;
+        mpv*)
+            if [ "$no_detach" = 0 ]; then
+                nohup $player_function $skip_flag --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" $subs_flag $refr_flag >/dev/null 2>&1 &
+            else
+                $player_function $skip_flag $subs_flag $refr_flag --force-media-title="${allanime_title}Episode ${ep_no}" "$episode"
+                mpv_exitcode=$?
+                [ "$exit_after_play" = 1 ] && [ -z "$range" ] && exit "$mpv_exitcode"
+            fi ;;
+        android_mpv) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n is.xyz.mpv/.MPVActivity >/dev/null 2>&1 & ;;
+        android_vlc) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity -e "title" "${allanime_title}Episode ${ep_no}" >/dev/null 2>&1 & ;;
+        *iina*)
+            [ -n "$subs_flag" ] && subs_flag="--mpv-${subs_flag#--}"
+            [ -n "$refr_flag" ] && refr_flag="--mpv-${refr_flag#--}"
+            nohup $player_function --no-stdin --keep-running --mpv-force-media-title="${allanime_title}Episode ${ep_no}" $subs_flag $refr_flag "$episode" >/dev/null 2>&1 & ;;
+        flatpak_mpv) flatpak run io.mpv.Mpv --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" $subs_flag $refr_flag >/dev/null 2>&1 & ;;
+        vlc*) nohup $player_function --http-referrer="${allanime_refr}" --play-and-exit --meta-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
+        *yncpla*) nohup $player_function "$episode" -- --force-media-title="${allanime_title}Episode ${ep_no}" $subs_flag $refr_flag >/dev/null 2>&1 & ;;
+        download) "$player_function" "$episode" "${allanime_title}Episode ${ep_no}" "$subtitle" ;;
+        catt) nohup catt cast "$episode" -s "$subtitle" >/dev/null 2>&1 & ;;
+        iSH)
+            printf "\e]8;;vlc://%s\a~~~~~~~~~~~~~~~~~~~~\n~ Ketuk untuk buka VLC ~\n~~~~~~~~~~~~~~~~~~~~\e]8;;\a\n" "$episode"
+            sleep 5 ;;
+        *) nohup $player_function "$episode" >/dev/null 2>&1 & ;;
+    esac
+    replay="$episode"
+    unset episode
+    update_history
+    [ "$use_external_menu" = "1" ] && wait
+}
+
+play() {
+    start=$(printf "%s" "$ep_no" | grep -Eo '^(-1|[0-9]+(\.[0-9]+)?)')
+    end=$(printf "%s" "$ep_no" | grep -Eo '(-1|[0-9]+(\.[0-9]+)?)$')
+    [ "$start" = "-1" ] && ep_no=$(printf "%s" "$ep_list" | tail -n1) && unset start
+    [ -z "$end" ] || [ "$end" = "$start" ] && unset start end
+    [ "$end" = "-1" ] && end=$(printf "%s" "$ep_list" | tail -n1)
+    line_count=$(printf "%s\n" "$ep_no" | wc -l | tr -d "[:space:]")
+    if [ "$line_count" != 1 ] || [ -n "$start" ]; then
+        [ -z "$start" ] && start=$(printf "%s\n" "$ep_no" | head -n1)
+        [ -z "$end" ] && end=$(printf "%s\n" "$ep_no" | tail -n1)
+        range=$(printf "%s\n" "$ep_list" | sed -nE "/^${start}\$/,/^${end}\$/p")
+        [ -z "$range" ] && die "Rentang episode tidak valid!"
+        for i in $range; do
+            tput clear
+            ep_no=$i
+            printf "\33[2K\r\033[1;34mMemutar episode %s...\033[0m\n" "$ep_no"
+            [ "$i" = "$end" ] && unset range
+            play_episode
+        done
+    else
+        play_episode
+    fi
+    [ "$player_function" != "debug" ] && [ "$player_function" != "download" ] && tput rc && tput ed
+}
+
+# === PROSES PENCARIAN ===
+case "$search" in
+    history)
+        anime_list=$(while read -r ep_no id title; do process_hist_entry & done <"$histfile")
+        wait
+        [ -z "$anime_list" ] && die "Tidak ada seri yang belum ditonton di riwayat!"
+        [ -z "${index##*[!0-9]*}" ] && id=$(printf "%s" "$anime_list" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Pilih anime: " | cut -f1)
+        [ -z "${index##*[!0-9]*}" ] || id=$(printf "%s" "$anime_list" | sed -n "${index}p" | cut -f1)
+        [ -z "$id" ] && exit 1
+        title=$(printf "%s" "$anime_list" | grep "$id" | cut -f2 | sed 's/ - episode.*//')
+        ep_list=$(episodes_list "$id")
+        ep_no=$(printf "%s" "$anime_list" | grep "$id" | cut -f2 | sed -nE 's/.*- episode (.+)$/\1/p')
+        allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]')"
+        ;;
+    nextep)
+        [ -z "$query" ] && { printf "\33[2K\r\033[1;36mMasukkan nama anime untuk cek jadwal: \033[0m" && read -r query; }
+        time_until_next_ep "$query"
+        ;;
+    *)
+        if [ "$use_external_menu" = "0" ]; then
+            while [ -z "$query" ]; do
+                printf "\33[2K\r\033[1;36mCari anime: \033[0m" && read -r query
+            done
+        else
+            [ -z "$query" ] && query=$(printf "" | external_menu "" "Cari anime: " "$external_menu_args")
+            [ -z "$query" ] && exit 1
+        fi
+        query=$(printf "%s" "$query" | sed "s| |+|g")
+        anime_list=$(search_anime "$query")
+        if [ -z "$anime_list" ]; then
+            printf "\n\033[1;31mHasil pencarian tidak ditemukan.\033[0m\n"
+            sleep 1
+            exec "$0" "$@"
+        fi
+        [ "$index" -eq "$index" ] 2>/dev/null && result=$(printf "%s" "$anime_list" | sed -n "${index}p")
+        [ -z "$index" ] && result=$(printf "%s" "$anime_list" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Pilih anime: ")
+        [ -z "$result" ] && exit 1
+        title=$(printf "%s" "$result" | cut -f2)
+        allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]')"
+        id=$(printf "%s" "$result" | cut -f1)
+        ep_list=$(episodes_list "$id")
+        [ -z "$ep_no" ] && ep_no=$(printf "%s" "$ep_list" | nth "Pilih episode: " "$multi_selection_flag")
+        [ -z "$ep_no" ] && exit 1
+        ;;
+esac
+
+[ "$skip_intro" = 1 ] && mal_id="$(ani-skip -q "${skip_title:-${title}}")"
+tput cuu1 && tput el
+tput sc
+play
+
+[ "$player_function" = "download" ] || [ "$player_function" = "debug" ] && exit 0
+
+while true; do
+    cmd=$(printf "berikutnya\nulang\nsebelumnya\npilih\nubah_kualitas\nkembali_ke_menu" | nth "Memutar episode $ep_no dari $title... ")
+    case "$cmd" in
+        berikutnya)
+            ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null ;;
+        ulang)
+            episode="$replay" ;;
+        sebelumnya)
+            ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{g;1!p;};h") 2>/dev/null ;;
+        pilih)
+            ep_no=$(printf "%s" "$ep_list" | nth "Pilih episode: " "$multi_selection_flag") ;;
+        ubah_kualitas)
+            new_quality="$(printf "%s" "$links" | launcher | cut -d\> -f1)"
+            select_quality "$new_quality" ;;
+        kembali_ke_menu)
+            printf "\nKembali ke menu utama...\n"
+            sleep 1
+            # Kosongkan variabel agar kembali ke input pencarian awal
+            query=""
+            ep_no=""
+            title=""
+            id=""
+            break ;;  # Keluar dari loop pemutaran
+        *)
+            printf "\nKeluar dari ANI-CLI.\n"
+            exit 0 ;;
+    esac
+
+    [ -z "$ep_no" ] && die "Episode di luar jangkauan"
+    play
+done
+
+# Jika pengguna memilih "kembali_ke_menu", reset dan mulai ulang dari awal
+if [ -z "$query" ] && [ -z "$ep_no" ]; then
+    exec "$0" "$@"
+fi
