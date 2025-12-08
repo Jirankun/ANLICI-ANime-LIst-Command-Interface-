@@ -31,10 +31,10 @@ Versi ini merupakan modifikasi dari [pystardust/ani-cli](https://github.com/pyst
 
 ## 📌 Fitur Khusus Versi Ini
 
-- ✅ **Splash screen khas Indonesia** dengan identitas Zhyllan Fyllah
-- ✅ Jika **pencarian tidak ditemukan** → tampilkan pesan & **muat ulang otomatis setelah 3 detik**
-- ✅ Perintah `-U` / `--update` **mengarah ke repo GitHub Anda**, bukan repo asli
-- ✅ Dioptimalkan untuk **Termux di Android** (termasuk Realme Narzo 20)
+- ✅ **Bahasa Indonesia**
+- ✅ Jika **pencarian tidak ditemukan** → tampilkan pesan & **muat ulang otomatis setelah 2 detik**
+- ✅ Perintah `-U` / `--update` **mengarah ke repo GitHub ini**, bukan repo asli
+- ✅ Dioptimalkan untuk **Termux di Android**
 - ✅ Ringan, tidak perlu backend, langsung jalan di terminal
 
 ---
@@ -48,11 +48,11 @@ pkg update && pkg upgrade -y
 # 2. Instal dependensi wajib
 pkg install curl fzf mpv termux-api
 
-# 3. Unduh ANI-CLI versi Zhyllan
-curl -L -o ani-cli https://raw.githubusercontent.com/zhyllan/ani-cli/main/ani-cli
+# 3. Unduh ANLICI
+curl -L -o anli-ci https://raw.githubusercontent.com/zhyllan/ani-cli/main/ani-cli
 
 # 4. Beri izin eksekusi
-chmod +x ani-cli
+chmod +x anli-ci
 
 # 5. Jalankan!
-./ani-cli
+./anli-ci
