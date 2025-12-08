@@ -114,7 +114,7 @@ version_info() {
 }
 
 update_script() {
-    update="$(curl -s -A "$agent" "https://raw.githubusercontent.com/pystardust/ani-cli/master/ani-cli")" || die "Kesalahan koneksi"
+    update="$(curl -s -A "$agent" "https://raw.githubusercontent.com/Jirankun/ANLICI-ANime-LIst-Command-Interface-/refs/heads/main/ANLI-CI.sh")" || die "Kesalahan koneksi"
     update="$(printf '%s\n' "$update" | diff -u "$0" -)"
     if [ -z "$update" ]; then
         printf "Skrip sudah mutakhir :)\n"
@@ -533,4 +533,5 @@ done
 # Jika pengguna memilih "kembali_ke_menu", reset dan mulai ulang dari awal
 if [ -z "$query" ] && [ -z "$ep_no" ]; then
     exec "$0" "$@"
+
 fi
