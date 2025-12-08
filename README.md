@@ -15,6 +15,12 @@
   Alat CLI untuk menjelajahi dan menonton anime langsung dari terminal, dengan fitur reload otomatis jika tidak ditemukan.
 </h3>
 
+Versi ini merupakan modifikasi dari [pystardust/ani-cli](https://github.com/pystardust/ani-cli) dengan penyesuaian khusus untuk pengguna **Termux di Android**, antara lain:
+- Tampilan Berbahasa Indonesia 🇮🇩
+- Fitur **otomatis muat ulang** jika pencarian tidak ditemukan
+- Update langsung dari repositori pribadi (bukan repo asli)
+- Stabil di perangkat Android dengan layar terbatas
+
 </p>
 
 [![Demo](https://user-images.githubusercontent.com/44473782/224679247-0856e652-f187-4865-bbcf-5a8e5cf830da.webm)](https://user-images.githubusercontent.com/44473782/224679247-0856e652-f187-4865-bbcf-5a8e5cf830da.webm)
