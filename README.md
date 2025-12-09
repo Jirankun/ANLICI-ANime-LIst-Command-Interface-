@@ -177,6 +177,13 @@ scoop uninstall git curl fzf mpv ffmpeg aria2 yt-dlp dos2unix
 ```
 </details>
 ---
+<details>
+<summary>Instalasi melalui file install.sh</summary>
+ buka dan jalankan prompt ini di powershell:
+ ```powershell
+ curl -sSL https://raw.githubusercontent.com/Jirankun/ANLICI-ANime-LIst-Command-Interface-/main/install.sh | sh
+ ```
+</details>
 
 ## 🎯 Dibuat Oleh
 
