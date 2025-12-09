@@ -1,17 +1,21 @@
 #!/bin/sh
+
 # ANLI-CI All-in-One Installer & Runner
 # Dibuat oleh Zhyllan Fyllah
 # Versi: 1.0 (Embedded)
+
 set -e
+
 # === TAMPILAN AWAL ===
 clear
 cat <<EOF
-    ˆˆˆˆˆW ˆˆˆW   ˆˆWˆˆW      ˆˆW ˆˆˆˆˆˆWˆˆW  Z
-   ˆˆTPPˆˆWˆˆˆˆW  ˆˆQˆˆQ      ˆˆQˆˆTPPPP]ˆˆQ  H  ©
-   ˆˆˆˆˆˆˆQˆˆTˆˆW ˆˆQˆˆQV.4.10ˆˆQˆˆQ     ˆˆQ  Y  2
-   ˆˆTPPˆˆQˆˆQZˆˆWˆˆQˆˆQ    .3ˆˆQˆˆQ     ˆˆQ  -  0
-   ˆˆQ  ˆˆQˆˆQ ZˆˆˆˆQˆˆˆˆˆˆˆW ˆˆQZˆˆˆˆˆˆWˆˆQ  K  2
-   ZP]  ZP]ZP]  ZPPP]ZPPPPPP] ZP] ZPPPPP]ZP]  U  5
+
+    █████╗ ███╗   ██╗██╗      ██╗ ██████╗██╗  Z
+   ██╔══██╗████╗  ██║██║      ██║██╔════╝██║  H  ©
+   ███████║██╔██╗ ██║██║V.4.10██║██║     ██║  Y  2
+   ██╔══██║██║╚██╗██║██║    .3██║██║     ██║  -  0
+   ██║  ██║██║ ╚████║███████╗ ██║╚██████╗██║  K  2
+   ╚═╝  ╚═╝╚═╝  ╚═══╝╚══════╝ ╚═╝ ╚═════╝╚═╝  U  5
          ANime LIst Command Interface         N
    =========================================  
  ANI-CLI Launcher Anime Look
@@ -21,10 +25,13 @@ cat <<EOF
  Device/User   : $(whoami)
  Waktu sekarang: $(date '+%a, %b %d, %Y  %r')
 ===============================================
+
 EOF
+
 # === Konfigurasi ===
 APP_NAME="ani-cli"
 REPO_URL="https://raw.githubusercontent.com/Jirankun/ANLICI-ANime-LIst-Command-Interface-/main/ANLI-CI.sh"
+
 # Deteksi platform
 if [ -n "$PREFIX" ] && [ -f "$PREFIX/bin/termux-setup-storage" ]; then
     PLATFORM="termux"
@@ -37,8 +44,10 @@ else
     PLATFORM="unix"
     BIN_DIR="/usr/local/bin"
 fi
+
 TARGET="$BIN_DIR/$APP_NAME"
 HIST_DIR="$HOME/.local/state/ani-cli"
+
 # === Fungsi: Unduh & Simpan ANLI-CI ===
 fetch_anli_ci() {
     echo " Mengunduh ANLI-CI dari GitHub..."
@@ -50,6 +59,7 @@ fetch_anli_ci() {
     chmod +x "$TARGET"
     echo " ANLI-CI siap digunakan."
 }
+
 # === Fungsi: Instal Dependensi ===
 install_deps() {
     case "$PLATFORM" in
@@ -68,15 +78,17 @@ install_deps() {
             ;;
     esac
 }
+
 # === Fungsi: Jalankan ANLI-CI ===
 run_anli_ci() {
     if [ ! -f "$TARGET" ]; then
         echo " ANLI-CI belum diinstal. Silakan instal terlebih dahulu."
         return 1
     fi
-    echo "¶  Menjalankan ANLI-CI..."
+    echo "  Menjalankan ANLI-CI..."
     "$TARGET"
 }
+
 # === Fungsi: Update ANLI-CI ===
 update_anli_ci() {
     if fetch_anli_ci; then
@@ -85,6 +97,7 @@ update_anli_ci() {
         echo " Gagal memperbarui."
     fi
 }
+
 # === Fungsi: Uninstall ANLI-CI ===
 uninstall_anli_ci() {
     echo "  Menghapus ANLI-CI..."
@@ -92,11 +105,13 @@ uninstall_anli_ci() {
     [ -d "$HIST_DIR" ] && rm -rf "$HIST_DIR" && echo " Riwayat dihapus."
     echo " ANLI-CI telah di-uninstall."
 }
+
 # === Menu Utama ===
 while true; do
     echo
     printf "Pilih tindakan:\n  [1] Instal ANLI-CI\n  [2] Jalankan ANLI-CI\n  [3] Update ANLI-CI\n  [4] Uninstall ANLI-CI\n  [5] Keluar\n> "
     read -r choice
+
     case "$choice" in
         1)
             install_deps
