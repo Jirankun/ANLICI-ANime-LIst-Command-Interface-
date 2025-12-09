@@ -25,21 +25,21 @@ Dibangun dari kode sumber [pystardust/ani-cli](https://github.com/pystardust/ani
 
 ## 🌟 Fitur Utama
 
-Menggunakan **Bahasa Indonesia** di seluruh bagian Prompt
-
-100% ***TANPA IKLAN*** dan hal yang mengganggu lainnya
-
-Jika **pencarian tidak ditemukan** → tampilkan pesan & **muat ulang otomatis setelah 2 detik**
-
-1. Perintah `-U` / `--update` , bukan repo asli
+- Menggunakan **Bahasa Indonesia** di seluruh bagian Prompt
   
-2. Stabil di perangkat Android dengan layar terbatas
+- 100% ***TANPA IKLAN*** dan hal yang mengganggu lainnya
   
-3. Ringan, tidak perlu backend, langsung jalan di terminal
+- Jika **pencarian tidak ditemukan** → tampilkan pesan & **muat ulang otomatis setelah 2 detik**
   
-4. Kekurangannya :TIDAK ADA SUBTITLE BAHASA INDONESIA karena server indonesia menggunakan link AD dan ANTI BOT,mohon di maklumi
+- Perintah `-U` / `--update` , bukan repo asli
   
-5. Sumber data: [allmanga.to](https://allmanga.to)
+- Stabil di perangkat Android dengan layar terbatas
+  
+- Ringan, tidak perlu backend, langsung jalan di terminal
+  
+- Kekurangannya :TIDAK ADA SUBTITLE BAHASA INDONESIA karena server indonesia menggunakan link AD dan ANTI BOT,mohon di maklumi
+  
+- Sumber data: [allmanga.to](https://allmanga.to)
   
 
 ---
@@ -48,7 +48,6 @@ Jika **pencarian tidak ditemukan** → tampilkan pesan & **muat ulang otomatis s
 <summary>1.📲 Instalasi dan Jalankan di android (Via Termux)</summary>
 
 - Jalankan perintah Instalasi berikut:
-  
 
 ```sh
 sh
@@ -62,7 +61,6 @@ cd ~ && pkg install -y git mpv yt-dlp aria2 ffmpeg fzf && git clone https://gith
 ## ▶ Menjalankan ANLI-CI
 
 - Jika sudah di install, jalankan dengan:
-  
 
 ```sh
 sh
@@ -79,7 +77,6 @@ chmod +x ANLI-CI.sh && \
 ## 🗑 Uninstall ANLI-CI
 
 - Hapus semua file ANLI-CI dan riwayat tontonan:
-  
 
 ```sh
 sh
@@ -112,18 +109,14 @@ chmod +x anli-ci && \
 ```
 
 > 🔁 Untuk update: jalankan `./anli-ci -U`
-
 </details>
 ---
 <details>
-<summary>2.🔹 Untuk Windows {7,10,dan 11} (Git Bash + Scoop)</summary>
-Instal Scoop (PowerShell)
+--- <summary>2.🔹 Untuk Windows {7,10,dan 11} (Git Bash + Scoop) Instal Scoop (PowerShell)</summary>
 
 - Instal scoop (PowerShell)
-  
 
 ```powershell
-
 Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
 irm get.scoop.sh | iex
 scoop bucket add extras
@@ -132,15 +125,12 @@ scoop bucket add extras
 ---
 
 - Instal dependensi (PowerShell)
-  
 
 ```powershell
-
 scoop install git curl fzf mpv ffmpeg aria2 yt-dlp dos2unix
 ```
 
 - Jalankan di Git Bash
-  
 
 ```sh
 git clone https://github.com/Jirankun/ANLICI-ANime-LIst-Command-Interface-.git
@@ -151,10 +141,8 @@ chmod +x ANLI-CI.sh
 ```
 
 - Jalankan Ulang
-  
 
 ```sh
-
 cd ~/ANLICI-ANime-LIst-Command-Interface- && \
 dos2unix ANLI-CI.sh 2>/dev/null || sed -i 's/\r$//' ANLI-CI.sh && \
 chmod +x ANLI-CI.sh && \
@@ -164,10 +152,8 @@ chmod +x ANLI-CI.sh && \
 > Perintah ini aman dijalankan berulang kali — memperbaiki format file & izin otomatis.
 
 - Update
-  
 
 ```sh
-
 cd ~/ANLICI-ANime-LIst-Command-Interface- && git pull
 ⚠️ Fitur `./ANLI-CI.sh -U` tidak disarankan di Windows. Lebih aman pakai `git pull`.
 ```
@@ -177,21 +163,19 @@ cd ~/ANLICI-ANime-LIst-Command-Interface- && git pull
 > ⚠️ Fitur `./ANLI-CI.sh -U` **tidak disarankan di Windows**. Lebih aman pakai `git pull`.
 
 - 🗑️ Uninstall
-  
 
 Hapus semua file ANLI-CI dan riwayat:
 
 ```sh
-
 rm -rf ~/ANLICI-ANime-LIst-Command-Interface- ~/.local/state/ani-cli
 ```
 
 (Opsional) Hapus paket juga:
 
 ```powershell
-
 scoop uninstall git curl fzf mpv ffmpeg aria2 yt-dlp dos2unix
 ```
+</details>
 
 ## 🎯 Dibuat Oleh
 
