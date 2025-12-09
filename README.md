@@ -73,6 +73,19 @@ chmod +x ANLI-CI.sh && \
 > ✅ Perintah ini otomatis memperbaiki line ending Windows dan memberi izin eksekusi.
 
 ---
+- dan untuk run berikutnya,tinggal panggil folder dengan cara ketik:
+
+```sh
+cd ~/ANLICI-ANime-LIst-Command-Interface-
+```
+kemudian jalankan dengan ketik:
+```sh
+./ANLI-CI.sh
+```
+
+> ✅ Perintah ini otomatis memanggil folder dan menjalankan eksekusi file **ANLI-CLI.sh**.
+
+ ---
 
 ## 🗑 Uninstall ANLI-CI
 
