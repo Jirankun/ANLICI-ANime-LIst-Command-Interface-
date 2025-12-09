@@ -1,102 +1,137 @@
 #!/bin/sh
 
-# install.sh — Installer ANLI-CI (ANI-CLI versi Jirankun)
-# Otomatis deteksi platform & instal dependensi
+# ANLI-CI All-in-One Installer & Runner
+# Dibuat oleh Zhyllan Fyllah
+# Versi: 1.0 (Embedded)
 
 set -e
 
-# === Konfigurasi ===
-GITHUB_USER="Jirankun"
-REPO_NAME="ANLICI-ANime-LIst-Command-Interface-"
-SCRIPT_NAME="ANLI-CI.sh"
-INSTALL_NAME="ani-cli"
-RAW_URL="https://raw.githubusercontent.com/${GITHUB_USER}/${REPO_NAME}/main/${SCRIPT_NAME}"
+# === TAMPILAN AWAL ===
+clear
+cat <<EOF
 
-# === Deteksi platform ===
+    █████╗ ███╗   ██╗██╗      ██╗ ██████╗██╗  Z
+   ██╔══██╗████╗  ██║██║      ██║██╔════╝██║  H  ©
+   ███████║██╔██╗ ██║██║V.4.10██║██║     ██║  Y  2
+   ██╔══██║██║╚██╗██║██║    .3██║██║     ██║  -  0
+   ██║  ██║██║ ╚████║███████╗ ██║╚██████╗██║  K  2
+   ╚═╝  ╚═╝╚═╝  ╚═══╝╚══════╝ ╚═╝ ╚═════╝╚═╝  U  5
+         ANime LIst Command Interface         N
+   =========================================  
+ ANI-CLI Launcher Anime Look
+ Developer     : Zhyllan Fyllah
+ Sekolah       : TKJ1 - SMKN 1 LEMBAH MELINTANG
+ Sumber        : github.com/pystardust/ani-cli
+ Device/User   : $(whoami)
+ Waktu sekarang: $(date '+%a, %b %d, %Y  %r')
+===============================================
+
+EOF
+
+# === Konfigurasi ===
+APP_NAME="ani-cli"
+REPO_URL="https://raw.githubusercontent.com/Jirankun/ANLICI-ANime-LIst-Command-Interface-/main/ANLI-CI.sh"
+
+# Deteksi platform
 if [ -n "$PREFIX" ] && [ -f "$PREFIX/bin/termux-setup-storage" ]; then
     PLATFORM="termux"
-    INSTALL_DIR="$PREFIX/bin"
-elif [ "$(uname)" = "Darwin" ]; then
-    PLATFORM="macos"
-    INSTALL_DIR="/usr/local/bin"
+    BIN_DIR="$PREFIX/bin"
+elif [ "$(uname -o 2>/dev/null)" = "Msys" ] || [ "$(uname -s | grep -q "MINGW"; echo $?)" = "0" ]; then
+    PLATFORM="windows"
+    BIN_DIR="$HOME/bin"
+    mkdir -p "$BIN_DIR"
 else
-    PLATFORM="linux"
-    INSTALL_DIR="/usr/local/bin"
+    PLATFORM="unix"
+    BIN_DIR="/usr/local/bin"
 fi
 
-# === Fungsi instalasi dependensi ===
-install_deps() {
-    echo "🔧 Menginstal dependensi yang dibutuhkan..."
+TARGET="$BIN_DIR/$APP_NAME"
+HIST_DIR="$HOME/.local/state/ani-cli"
 
+# === Fungsi: Unduh & Simpan ANLI-CI ===
+fetch_anli_ci() {
+    echo " Mengunduh ANLI-CI dari GitHub..."
+    if ! curl --fail --location --output "$TARGET.tmp" "$REPO_URL"; then
+        echo " Gagal mengunduh. Periksa koneksi atau URL."
+        return 1
+    fi
+    mv "$TARGET.tmp" "$TARGET"
+    chmod +x "$TARGET"
+    echo " ANLI-CI siap digunakan."
+}
+
+# === Fungsi: Instal Dependensi ===
+install_deps() {
     case "$PLATFORM" in
         termux)
-            # Termux: gunakan `pkg`
-            pkg update -y
-            pkg install -y curl fzf mpv
-            # Opsional tapi disarankan
-            echo "💡 Untuk fitur download, instal: pkg install aria2 ffmpeg yt-dlp"
+            echo " Menginstal dependensi di Termux..."
+            pkg update -y && pkg install -y curl fzf mpv aria2 ffmpeg yt-dlp
             ;;
-
-        linux)
-            if command -v apt >/dev/null; then
-                # Debian/Ubuntu
-                sudo apt update
-                sudo apt install -y curl fzf mpv
-            elif command -v dnf >/dev/null; then
-                # Fedora
-                sudo dnf install -y curl fzf mpv
-            elif command -v pacman >/dev/null; then
-                # Arch
-                sudo pacman -Sy --noconfirm curl fzf mpv
-            else
-                echo "⚠️  Package manager tidak dikenali. Pastikan curl, fzf, dan mpv sudah terinstal."
-            fi
+        windows)
+            echo "  Di Windows, pastikan Anda sudah instal:"
+            echo "   - Git Bash"
+            echo "   - Scoop + paket: fzf, mpv, curl, aria2, ffmpeg, yt-dlp"
             ;;
-
-        macos)
-            if ! command -v brew >/dev/null; then
-                echo "⚠️  Homebrew tidak ditemukan. Silakan instal dari https://brew.sh"
-                exit 1
-            fi
-            brew install curl fzf yt-dlp
-            brew install --cask iina mpv
-            ;;
-
-        *)
-            echo "❌ Platform tidak didukung."
-            exit 1
+        unix)
+            echo "  Di Linux/macOS, pastikan paket berikut terinstal:"
+            echo "  curl, fzf, mpv, aria2, ffmpeg, yt-dlp"
             ;;
     esac
 }
 
-# === Mulai instalasi ===
-echo "🚀 Memulai instalasi ANLI-CI (versi Jirankun)..."
-echo "Platform terdeteksi: $PLATFORM"
+# === Fungsi: Jalankan ANLI-CI ===
+run_anli_ci() {
+    if [ ! -f "$TARGET" ]; then
+        echo " ANLI-CI belum diinstal. Silakan instal terlebih dahulu."
+        return 1
+    fi
+    echo "▶️  Menjalankan ANLI-CI..."
+    "$TARGET"
+}
 
-# Tanya pengguna apakah ingin instal dependensi
-printf "Apakah Anda ingin menginstal dependensi otomatis? (y/n): "
-read -r confirm
+# === Fungsi: Update ANLI-CI ===
+update_anli_ci() {
+    if fetch_anli_ci; then
+        echo " ANLI-CI berhasil diperbarui!"
+    else
+        echo " Gagal memperbarui."
+    fi
+}
 
-if [ "$confirm" = "y" ] || [ "$confirm" = "Y" ]; then
-    install_deps
-else
-    echo "ℹ️  Lewati instalasi dependensi. Pastikan curl, fzf, dan mpv sudah terinstal!"
-fi
+# === Fungsi: Uninstall ANLI-CI ===
+uninstall_anli_ci() {
+    echo "  Menghapus ANLI-CI..."
+    [ -f "$TARGET" ] && rm "$TARGET" && echo " File executable dihapus."
+    [ -d "$HIST_DIR" ] && rm -rf "$HIST_DIR" && echo " Riwayat dihapus."
+    echo " ANLI-CI telah di-uninstall."
+}
 
-# Buat direktori jika belum ada
-mkdir -p "$INSTALL_DIR"
+# === Menu Utama ===
+while true; do
+    echo
+    printf "Pilih tindakan:\n  [1] Instal ANLI-CI\n  [2] Jalankan ANLI-CI\n  [3] Update ANLI-CI\n  [4] Uninstall ANLI-CI\n  [5] Keluar\n> "
+    read -r choice
 
-# Unduh skrip
-echo "📥 Mengunduh ANLI-CI dari GitHub..."
-if ! curl --fail --location --output "$INSTALL_DIR/$INSTALL_NAME" "$RAW_URL"; then
-    echo "❌ Gagal mengunduh skrip. Periksa koneksi internet atau URL."
-    exit 1
-fi
-
-# Beri izin eksekusi
-chmod +x "$INSTALL_DIR/$INSTALL_NAME"
-
-echo ""
-echo "✅ ANLI-CI berhasil diinstal sebagai '$INSTALL_NAME'!"
-echo "📌 Jalankan dengan: ani-cli"
-echo "🔄 Update kapan saja dengan: ani-cli -U"
+    case "$choice" in
+        1)
+            install_deps
+            fetch_anli_ci || exit 1
+            ;;
+        2)
+            run_anli_ci || exit 1
+            ;;
+        3)
+            update_anli_ci
+            ;;
+        4)
+            uninstall_anli_ci
+            ;;
+        5)
+            echo "Keluar. Terima kasih!"
+            exit 0
+            ;;
+        *)
+            echo " Pilihan tidak valid. Coba lagi."
+            ;;
+    esac
+done
