@@ -176,6 +176,7 @@ rm -rf ~/ANLICI-ANime-LIst-Command-Interface- ~/.local/state/ani-cli
 scoop uninstall git curl fzf mpv ffmpeg aria2 yt-dlp dos2unix
 ```
 </details>
+---
 
 ## 🎯 Dibuat Oleh
 
