@@ -1,58 +1,107 @@
-<p align="center">
-<br>
-<a href="https://github.com/zhyllan/ani-cli"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg"></a>
-<a href="#Android"><img src="https://img.shields.io/badge/os-android-brightgreen">
-<a href="#Linux"><img src="https://img.shields.io/badge/os-linux-brightgreen">
-<a href="#Windows"><img src="https://img.shields.io/badge/os-windows-yellowgreen">
-<a href="#MacOS"><img src="https://img.shields.io/badge/os-mac-yellowgreen">
-<br>
-<h1 align="center">
-  🇮🇩 ANI-CLI (ANime LIst Command Interface)
-</h1>
-
-<h3 align="center">
-  Versi modifikasi oleh <strong>Zhyllan Fyllah</strong> — untuk pengguna Termux & pecinta anime Indonesia!<br>
-  Alat CLI untuk menjelajahi dan menonton anime langsung dari terminal, dengan fitur reload otomatis jika tidak ditemukan.
-</h3>
-
-Versi ini merupakan modifikasi dari [pystardust/ani-cli](https://github.com/pystardust/ani-cli) dengan penyesuaian khusus untuk pengguna **Termux di Android**, antara lain:
-- Tampilan Berbahasa Indonesia 🇮🇩
-- Fitur **otomatis muat ulang** jika pencarian tidak ditemukan
-- Update langsung dari repositori pribadi (bukan repo asli)
-- Stabil di perangkat Android dengan layar terbatas
-
-</p>
-
-[![Demo](https://user-images.githubusercontent.com/44473782/224679247-0856e652-f187-4865-bbcf-5a8e5cf830da.webm)](https://user-images.githubusercontent.com/44473782/224679247-0856e652-f187-4865-bbcf-5a8e5cf830da.webm)
-
-> 🔍 **Sumber data**: [allmanga.to](https://allmanga.to)
+# ANLI-CI (ANime LIst Command Interface)
 
 ---
 
-## 📌 Fitur Khusus Versi Ini
+**Versi modifikasi oleh Zhyllan Fyllah** — alat CLI ringan untuk menjelajahi dan menonton anime langsung dari terminal!  
+Dioptimalkan khusus untuk **pengguna Termux di Android**, dengan antarmuka Bahasa Indonesia dan fitur otomatis.
 
-- ✅ **Bahasa Indonesia**
+Dibangun dari kode sumber [pystardust/ani-cli](https://github.com/pystardust/ani-cli), dengan penyesuaian untuk pengalaman lokal yang lebih nyaman.
+
+## 🌟 Fitur Utama
+
+- ✅ Menggunakan **Bahasa Indonesia** di seluruh bagian Prompt
+  
 - ✅ Jika **pencarian tidak ditemukan** → tampilkan pesan & **muat ulang otomatis setelah 2 detik**
-- ✅ Perintah `-U` / `--update` **mengarah ke repo GitHub ini**, bukan repo asli
-- ✅ Dioptimalkan untuk **Termux di Android**
+  
+- ✅ Perintah `-U` / `--update` , bukan repo asli
+  
+- ✅ Stabil di perangkat Android dengan layar terbatas
+  
 - ✅ Ringan, tidak perlu backend, langsung jalan di terminal
+  
+- ✅ Sumber data: [allmanga.to](https://allmanga.to)
+  
+  ---
+  
 
----
+<details>
+<summary>## 📲 Instalasi Cepat (Termux)</summary>
 
-## 📲 Instalasi (Termux — Direkomendasikan)
+Jalankan perintah berikut di Termux:
 
 ```sh
-# 1. Pastikan paket termux terbaru
-pkg update && pkg upgrade -y
+sh
+cd ~ && pkg install -y git mpv yt-dlp aria2 ffmpeg fzf && git clone https://github.com/Jirankun/ANLICI-ANime-LIst-Command-Interface-.git && cd ANLICI-ANime-LIst-Command-Interface- && ./ANLI-CI.sh
+```
 
-# 2. Instal dependensi wajib
-pkg install curl fzf mpv termux-api
+> ⚠ Pastikan `termux-setup-storage` sudah dijalankan jika diperlukan.
 
-# 3. Unduh ANLICI
-curl -L -o anli-ci https://raw.githubusercontent.com/zhyllan/ani-cli/main/ani-cli
+---
 
-# 4. Beri izin eksekusi
-chmod +x anli-ci
+## ▶ Menjalankan ANLI-CI
 
-# 5. Jalankan!
+Jika sudah pernah menginstal, jalankan dengan:
+
+```sh
+sh
+cd ~/ANLICI-ANime-LIst-Command-Interface- && \
+dos2unix ANLI-CI.sh 2>/dev/null || sed -i 's/\r$//' ANLI-CI.sh && \
+chmod +x ANLI-CI.sh && \
+./ANLI-CI.sh
+```
+
+> ✅ Perintah ini otomatis memperbaiki line ending Windows dan memberi izin eksekusi.
+
+---
+
+## 🗑 Uninstall ANLI-CI
+
+Hapus semua file ANLI-CI dan riwayat tontonan:
+
+```sh
+sh
+rm -rf ~/ANLICI-ANime-LIst-Command-Interface- ~/.local/state/ani-cli
+```
+
+---
+
+## 🧹 (Opsional) Hapus Paket Dependensi
+
+> ⚠ Hanya lakukan ini jika Anda yakin tidak membutuhkan paket tersebut untuk aplikasi lain!
+
+```sh
+sh
+pkg uninstall -y git mpv yt-dlp aria2 ffmpeg fzf
+```
+
+---
+
+## 🛠 Alternatif: Instal via `curl` (tanpa `git`)
+
+Jika tidak ingin kloning repo:
+
+```sh
+sh
+pkg install -y curl fzf mpv && \
+curl -L -o anli-ci https://raw.githubusercontent.com/zhyllan/ani-cli/main/ani-cli && \
+chmod +x anli-ci && \
 ./anli-ci
+```
+
+> 🔁 Untuk update: jalankan `./anli-ci -U`
+
+</details>
+---
+
+## 🎯 Dibuat Oleh
+
+**Zhyllan Fyllah**  
+Siswa TKJ — SMK N 1 Lembah Melintang, Pasaman Barat, Sumatera Barat
+
+> *"Anime itu seni. Dan seni layak dinikmati, bahkan di terminal."*
+
+---
+
+✨ **Selamat menonton anime dari terminal!** 🎌
+
+---
