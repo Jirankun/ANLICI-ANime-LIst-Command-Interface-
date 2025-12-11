@@ -84,6 +84,7 @@ Opsi:
   -S, --select-nth      Pilih entri ke-n
   -q, --quality         Tentukan kualitas video
   -v, --vlc             Gunakan VLC untuk memutar
+  -m, --mpv             Gunakan MPV untuk memutar
   -V, --version         Tampilkan versi skrip
   -h, --help            Tampilkan pesan bantuan ini
   -e, --episode         Tentukan nomor episode
@@ -102,6 +103,7 @@ Contoh penggunaan:
   %s --skip --skip-title \"one piece\" -S 2 one piece
   %s -d -e 2 cyberpunk edgerunners
   %s --vlc cyberpunk edgerunners -q 1080p -e 4
+  %s --mpv blue lock -e 5
   %s blue lock -e 5-6
   %s -e \"5 6\" blue lock
 " "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}"
@@ -114,7 +116,7 @@ version_info() {
 }
 
 update_script() {
-    update="$(curl -s -A "$agent" "https://raw.githubusercontent.com/Jirankun/ANLICI-ANime-LIst-Command-Interface-/refs/heads/main/ANLI-CI.sh")" || die "Kesalahan koneksi"
+    update="$(curl -s -A "$agent" "https://raw.githubusercontent.com/Jirankun/ANLICI-ANime-LIst-Command-Interface-/refs/heads/main/ANLI-CI.sh ")" || die "Kesalahan koneksi"
     update="$(printf '%s\n' "$update" | diff -u "$0" -)"
     if [ -z "$update" ]; then
         printf "Skrip sudah mutakhir :)\n"
@@ -134,18 +136,8 @@ dep_ch() {
     done
 }
 
-where_iina() {
-    [ -e "/Applications/IINA.app/Contents/MacOS/iina-cli" ] && echo "/Applications/IINA.app/Contents/MacOS/iina-cli" && return 0
-    printf "iina"
-}
-
-where_mpv() {
-    command -v "flatpak" >/dev/null && flatpak info io.mpv.Mpv >/dev/null 2>&1 && printf "flatpak_mpv" && return 0
-    printf "mpv"
-}
-
 agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/121.0"
-allanime_refr="https://allmanga.to"
+allanime_refr="https://allmanga.to "
 allanime_base="allanime.day"
 allanime_api="https://api.${allanime_base}"
 mode="${ANI_CLI_MODE:-sub}"
@@ -153,12 +145,13 @@ download_dir="${ANI_CLI_DOWNLOAD_DIR:-.}"
 log_episode="${ANI_CLI_LOG:-1}"
 quality="${ANI_CLI_QUALITY:-best}"
 
+# ======= Bagian player default (SEMUA PLATFORM DEFAULT KE VLC) =======
 case "$(uname -a | cut -d " " -f 1,3-)" in
-    *Darwin*) player_function="${ANI_CLI_PLAYER:-$(where_iina)}" ;;
-    *ndroid*) player_function="${ANI_CLI_PLAYER:-android_mpv}" ;;
-    *MINGW* | *WSL2*) player_function="${ANI_CLI_PLAYER:-mpv.exe}" ;;
-    *ish*) player_function="${ANI_CLI_PLAYER:-iSH}" ;;
-    *) player_function="${ANI_CLI_PLAYER:-$(where_mpv)}" ;;
+    *Darwin*) player_function="${ANI_CLI_PLAYER:-vlc}" ;;
+    *ndroid*) player_function="${ANI_CLI_PLAYER:-android_vlc}" ;;
+    *MINGW* | *WSL2*) player_function="${ANI_CLI_PLAYER:-vlc}" ;;
+    *ish*) player_function="${ANI_CLI_PLAYER:-vlc}" ;;
+    *) player_function="${ANI_CLI_PLAYER:-vlc}" ;;
 esac
 
 no_detach="${ANI_CLI_NO_DETACH:-0}"
@@ -181,9 +174,13 @@ while [ $# -gt 0 ]; do
         -v | --vlc)
             case "$(uname -a | cut -d " " -f 1,3-)" in
                 *ndroid*) player_function="android_vlc" ;;
-                MINGW* | *WSL2*) player_function="vlc.exe" ;;
-                *ish*) player_function="iSH" ;;
                 *) player_function="vlc" ;;
+            esac ;;
+        -m | --mpv)
+            case "$(uname -a | cut -d " " -f 1,3-)" in
+                *ndroid*) player_function="android_mpv" ;;
+                *MINGW* | *WSL2*) player_function="mpv.exe" ;;
+                *) player_function="mpv" ;;
             esac ;;
         -s | --syncplay)
             case "$(uname -s)" in
@@ -234,28 +231,55 @@ done
 [ "$use_external_menu" = "1" ] && multi_selection_flag="${ANI_CLI_MULTI_SELECTION:-"-multi-select"}"
 [ "$external_menu_normal_window" = "1" ] && external_menu_args="-normal-window"
 
-# Cek dependensi
+# =============================================
+# === PENAMBAHAN: PEMERIKSAAN PLAYER VLC/MPV ===
+# =============================================
+printf "\033[1;34mMemeriksa player...\033[0m\n"
+sleep 1
+
+# Safety fallback: pastikan player_function tidak kosong
+case "$(uname -a | cut -d " " -f 1,3-)" in
+    *ndroid*) player_function="${player_function:-android_vlc}" ;;
+    *) player_function="${player_function:-vlc}" ;;
+esac
+
+player_cmd="${player_function%% *}"
+
+# Cek hanya untuk player CLI (bukan android_ atau iSH)
+if ! echo "$player_function" | grep -qE '^(android_|iSH)'; then
+    if ! command -v "$player_cmd" >/dev/null 2>&1; then
+        printf "\033[1;31mPlayer \"$player_cmd\" tidak ditemukan! Mengalihkan ke halaman unduh VLC...\033[0m\n"
+        sleep 2
+        case "$(uname -s)" in
+            Darwin*) open "https://www.videolan.org/vlc/" ;;
+            Linux*) xdg-open "https://www.videolan.org/vlc/" ;;
+            MINGW* | *MSYS* | *WSL*) start "https://www.videolan.org/vlc/" ;;
+            *) printf "Silakan unduh VLC dari: https://www.videolan.org/vlc/\n" ;;
+        esac
+        exit 1
+    else
+        printf "\033[1;32mPlayer: $player_cmd\033[0m\n"
+        sleep 1
+    fi
+else
+    printf "\033[1;33mMenggunakan player: $player_function (tidak diverifikasi via CLI)\033[0m\n"
+    sleep 1
+fi
+
+# Cek dependensi umum
 dep_ch "curl" "sed" "grep" || true
 [ "$skip_intro" = 1 ] && (dep_ch "ani-skip" || true)
 dep_ch "fzf" || true
 
+# Cek dependensi khusus player (kecuali android/iSH)
 case "$player_function" in
     debug) ;;
     download) dep_ch "ffmpeg" "aria2c" ;;
-    android*|*iSH*) ;; # skip player check
-    flatpak_mpv) ;; # handled in where_mpv
-    *) dep_ch "$player_function" ;;
+    android*|*iSH*) ;;
+    *) ;;  # Sudah diverifikasi di atas
 esac
 
-# === FUNGSI INTI (disingkat agar tidak terlalu panjang, tapi tetap lengkap) ===
-# Semua fungsi asli seperti get_links, search_anime, play_episode, dll tetap dipertahankan
-# dengan teks output tetap dalam Bahasa Inggris teknis (URL, API, dll), 
-# namun prompt pengguna & pesan ke pengguna sudah diterjemahkan.
-
-# ... [FUNGSI-FUNGSI INTI DI BAWAH INI ADALAH SAMA SEPERTI VERSI ASLI, 
-#     KARENA PENGGUNAAN TEKNIS & ERROR HANDLING BIASANYA TETAP DALAM BAHASA INGGRIS.
-#     TAPI SEMUA PROMPT INTERAKTIF SUDAH DIUBAH KE BAHASA INDONESIA DI BAWAH.] ...
-
+# === FUNGSI INTI ===
 get_links() {
     response="$(curl -e "$allanime_refr" -s "https://${allanime_base}$*" -A "$agent")"
     episode_link="$(printf '%s' "$response" | sed 's|},{|\n|g' | sed -nE 's|.*link":"([^"]*)".*"resolutionStr":"([^"]*)".*|\2 >\1|p;s|.*hls","url":"([^"]*)".*"hardsub_lang":"en-US".*|\1|p')"
@@ -282,7 +306,7 @@ get_links() {
 provider_init() {
     provider_name=$1
     provider_id=$(printf "%s" "$resp" | sed -n "$2" | head -1 | cut -d':' -f2 | sed 's/../&\
-/g' | sed 's/^79$/A/g;s/^7a$/B/g;s/^7b$/C/g;s/^7c$/D/g;s/^7d$/E/g;s/^7e$/F/g;s/^7f$/G/g;s/^70$/H/g;s/^71$/I/g;s/^72$/J/g;s/^73$/K/g;s/^74$/L/g;s/^75$/M/g;s/^76$/N/g;s/^77$/O/g;s/^68$/P/g;s/^69$/Q/g;s/^6a$/R/g;s/^6b$/S/g;s/^6c$/T/g;s/^6d$/U/g;s/^6e$/V/g;s/^6f$/W/g;s/^60$/X/g;s/^61$/Y/g;s/^62$/Z/g;s/^59$/a/g;s/^5a$/b/g;s/^5b$/c/g;s/^5c$/d/g;s/^5d$/e/g;s/^5e$/f/g;s/^5f$/g/g;s/^50$/h/g;s/^51$/i/g;s/^52$/j/g;s/^53$/k/g;s/^54$/l/g;s/^55$/m/g;s/^56$/n/g;s/^57$/o/g;s/^48$/p/g;s/^49$/q/g;s/^4a$/r/g;s/^4b$/s/g;s/^4c$/t/g;s/^4d$/u/g;s/^4e$/v/g;s/^4f$/w/g;s/^40$/x/g;s/^41$/y/g;s/^42$/z/g;s/^08$/0/g;s/^09$/1/g;s/^0a$/2/g;s/^0b$/3/g;s/^0c$/4/g;s/^0d$/5/g;s/^0e$/6/g;s/^0f$/7/g;s/^00$/8/g;s/^01$/9/g;s/^15$/-/g;s/^16$/./g;s/^67$/_/g;s/^46$/~/g;s/^02$/:/g;s/^17$/\//g;s/^07$/?/g;s/^1b$/#/g;s/^63$/\[/g;s/^65$/\]/g;s/^78$/@/g;s/^19$/!/g;s/^1c$/$/g;s/^1e$/&/g;s/^10$/\(/g;s/^11$/\)/g;s/^12$/*/g;s/^13$/+/g;s/^14$/,/g;s/^03$/;/g;s/^05$/=/g;s/^1d$/%/g' | tr -d '\n' | sed "s/\/clock/\/clock\.json/")
+/g' | sed 's/^79$/A/g;s/^7a$/B/g;s/^7b$/C/g;s/^7c$/D/g;s/^7d$/E/g;s/^7e$/F/g;s/^7f$/G/g;s/^70$/H/g;s/^71$/I/g;s/^72$/J/g;s/^73$/K/g;s/^74$/L/g;s/^75$/M/g;s/^76$/N/g;s/^77$/O/g;s/^68$/P/g;s/^69$/Q/g;s/^6a$/R/g;s/^6b$/S/g;s/^6c$/T/g;s/^6d$/U/g;s/^6e$/V/g;s/^6f$/W/g;s/^60$/X/g;s/^61$/Y/g;s/^62$/Z/g;s/^59$/a/g;s/^5a$/b/g;s/^5b$/c/g;s/^5c$/d/g;s/^5d$/e/g;s/^5e$/f/g;s/^5f$/g/g;s/^50$/h/g;s/^51$/i/g;s/^52$/j/g;s/^53$/k/g;s/^54$/l/g;s/^55$/m/g;s/^56$/n/g;s/^57$/o/g;s/^48$/p/g;s/^49$/q/g;s/^4a$/r/g;s/^4b$/s/g;s/^4c$/t/g;s/^4d$/u/g;s/^4e$/v/g;s/^4f$/w/g;s/^40$/x/g;s/^41$/y/g;s/^42$/z/g;s/^08$/0/g;s/^09$/1/g;s/^0a$/2/g;s/^0b$/3/g;s/^0c$/4/g;s/^0d$/5/g;s/^0e$/6/g;s/^0f$/7/g;s/^00$/8/g;s/^01$/9/g;s/^15$/-/g;s/^16$/./g;s/^67$/_/g;s/^46$/~/g;s/^02$/://g;s/^17$/\//g;s/^07$/?/g;s/^1b$/#/g;s/^63$/\[/g;s/^65$/\]/g;s/^78$/@/g;s/^19$/!/g;s/^1c$/\$/g;s/^1e$/&/g;s/^10$/(/g;s/^11$/)/g;s/^12$/\*/g;s/^13$/+/g;s/^14$/,/g;s/^03$/;/g;s/^05$/=/g;s/^1d$/%%/g' | tr -d '\n' | sed "s/\/clock/\/clock\.json/")
 }
 
 generate_link() {
@@ -335,7 +359,7 @@ search_anime() {
 }
 
 time_until_next_ep() {
-    animeschedule="https://animeschedule.net"
+    animeschedule="https://animeschedule.net "
     query="$(printf "%s\n" "$*" | tr ' ' '+')"
     curl -s -G "$animeschedule/api/v3/anime" --data "q=${query}" | sed 's|"id"|\n|g' | sed -nE 's|.*,"route":"([^"]*)","premier.*|\1|p' | while read -r anime; do
         data=$(curl -s "$animeschedule/anime/$anime" | sed '1,/"anime-header-list-buttons-wrapper"/d' | sed -nE 's|.*countdown-time-raw" datetime="([^"]*)">.*|Next Raw Release: \1|p;s|.*countdown-time" datetime="([^"]*)">.*|Next Sub Release: \1|p;s|.*english-title">([^<]*)<.*|English Title: \1|p;s|.*main-title".*>([^<]*)<.*|Japanese Title: \1|p')
@@ -390,7 +414,7 @@ play_episode() {
     case "$player_function" in
         debug)
             printf "Semua tautan:\n%s\nTautan terpilih:\n%s\n" "$links" "$episode" ;;
-        mpv*)
+        mpv*|mpv)
             if [ "$no_detach" = 0 ]; then
                 nohup $player_function $skip_flag --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" $subs_flag $refr_flag >/dev/null 2>&1 &
             else
@@ -515,12 +539,11 @@ while true; do
         kembali_ke_menu)
             printf "\nKembali ke menu utama...\n"
             sleep 1
-            # Kosongkan variabel agar kembali ke input pencarian awal
             query=""
             ep_no=""
             title=""
             id=""
-            break ;;  # Keluar dari loop pemutaran
+            break ;;
         *)
             printf "\nKeluar dari ANI-CLI.\n"
             exit 0 ;;
@@ -530,8 +553,6 @@ while true; do
     play
 done
 
-# Jika pengguna memilih "kembali_ke_menu", reset dan mulai ulang dari awal
 if [ -z "$query" ] && [ -z "$ep_no" ]; then
     exec "$0" "$@"
-
 fi
