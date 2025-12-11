@@ -67,7 +67,7 @@ sh
 cd ~/ANLICI-ANime-LIst-Command-Interface- && \
 dos2unix ANLI-CI.sh 2>/dev/null || sed -i 's/\r$//' ANLI-CI.sh && \
 chmod +x ANLI-CI.sh && \
-./ANLI-CI.sh
+./ANLI-CI.sh -v
 ```
 
 > ✅ Perintah ini otomatis memperbaiki line ending Windows dan memberi izin eksekusi.
@@ -80,11 +80,15 @@ cd ~/ANLICI-ANime-LIst-Command-Interface-
 ```
 kemudian jalankan dengan ketik:
 ```sh
-./ANLI-CI.sh
+./ANLI-CI.sh -v
 ```
 
 > ✅ Perintah ini otomatis memanggil folder dan menjalankan eksekusi file **ANLI-CLI.sh**.
 
+jika ingin menjalankan anli-ci dengan nama anime langsung,silahkan ketik:
+```sh
+./ANLI-CI.sh -v "nama anime"
+```
  ---
 
 ## 🗑 Uninstall ANLI-CI
