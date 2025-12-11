@@ -32,7 +32,7 @@ EOF
 # === ANI-CLI INTI (v4.10.3) ===
 # ==============================
 
-version_number="4.10.3"
+version_number="4.10.7"
 
 external_menu() {
     rofi "$1" -sort -dmenu -i -width 1500 -p "$2" "$3"
@@ -83,22 +83,28 @@ Opsi:
   -s, --syncplay        Tonton bersama teman via Syncplay
   -S, --select-nth      Pilih entri ke-n
   -q, --quality         Tentukan kualitas video
-  -v, --vlc             Gunakan VLC untuk memutar (default)
+  -v, --vlc             Gunakan VLC untuk memutar
   -V, --version         Tampilkan versi skrip
   -h, --help            Tampilkan pesan bantuan ini
   -e, --episode         Tentukan nomor episode
   -r, --range           Tentukan rentang episode
   --dub                 Putar versi dub (bahasa lain)
   --rofi                Gunakan rofi alih-alih fzf
-  --skip                Lewati intro
+  --skip                Lewati intro (hanya mpv)
   --no-detach           Jangan jalankan player di latar
   --exit-after-play     Keluar setelah selesai memutar
   --skip-title <judul>  Judul untuk ani-skip
   -N, --nextep-countdown Tampilkan hitung mundur episode berikutnya
   -U, --update          Perbarui skrip ini
 
-Catatan: MPV telah dihapus. Hanya VLC yang digunakan.
-" "${0##*/}" "${0##*/}" "${0##*/}"
+Contoh penggunaan:
+  %s -q 720p banana fish
+  %s --skip --skip-title \"one piece\" -S 2 one piece
+  %s -d -e 2 cyberpunk edgerunners
+  %s --vlc cyberpunk edgerunners -q 1080p -e 4
+  %s blue lock -e 5-6
+  %s -e \"5 6\" blue lock
+" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}"
     exit 0
 }
 
@@ -108,7 +114,7 @@ version_info() {
 }
 
 update_script() {
-    update="$(curl -s -A "$agent" "https://raw.githubusercontent.com/Jirankun/ANLICI-ANime-LIst-Command-Interface-/refs/heads/main/ANLI-CI.sh ")" || die "Kesalahan koneksi"
+    update="$(curl -s -A "$agent" "https://raw.githubusercontent.com/Jirankun/ANLICI-ANime-LIst-Command-Interface-/refs/heads/main/ANLI-CI.sh  ")" || die "Kesalahan koneksi"
     update="$(printf '%s\n' "$update" | diff -u "$0" -)"
     if [ -z "$update" ]; then
         printf "Skrip sudah mutakhir :)\n"
@@ -124,12 +130,28 @@ update_script() {
 
 dep_ch() {
     for dep; do
-        command -v "${dep%% *}" >/dev/null || die "Program \"${dep%% *}\" tidak ditemukan. Harap instal terlebih dahulu."
+        cmd="${dep%% *}"
+        if ! command -v "$cmd" >/dev/null; then
+            case "$cmd" in
+                mpv)
+                    if echo "$(uname -a)" | grep -q "ndroid"; then
+                        return 0  # abaikan di Android
+                    elif echo "$(uname -a)" | grep -iq "microsoft\|wsl"; then
+                        die "mpv tidak ditemukan di WSL/Windows.\nSilakan unduh mpv untuk Windows: https://mpv.io/installation/"
+                    else
+                        die "mpv tidak ditemukan.\nSilakan instal dengan: sudo apt install mpv"
+                    fi
+                    ;;
+                *)
+                    die "Program \"$cmd\" tidak ditemukan. Harap instal terlebih dahulu."
+                    ;;
+            esac
+        fi
     done
 }
 
 agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/121.0"
-allanime_refr="https://allmanga.to "
+allanime_refr="https://allmanga.to  "
 allanime_base="allanime.day"
 allanime_api="https://api.${allanime_base}"
 mode="${ANI_CLI_MODE:-sub}"
@@ -137,13 +159,19 @@ download_dir="${ANI_CLI_DOWNLOAD_DIR:-.}"
 log_episode="${ANI_CLI_LOG:-1}"
 quality="${ANI_CLI_QUALITY:-best}"
 
-# ======= Player default: HANYA VLC =========
+# DETEKSI SISTEM — SESUAI PERMINTAAN
 case "$(uname -a | cut -d " " -f 1,3-)" in
-    *Darwin*) player_function="${ANI_CLI_PLAYER:-vlc}" ;;
-    *ndroid*) player_function="${ANI_CLI_PLAYER:-android_vlc}" ;;
-    *MINGW* | *WSL2*) player_function="${ANI_CLI_PLAYER:-vlc}" ;;
-    *ish*) player_function="${ANI_CLI_PLAYER:-vlc}" ;;
-    *) player_function="${ANI_CLI_PLAYER:-vlc}" ;;
+    *ndroid*)
+        if command -v am >/dev/null && am resolveActivity -c android.intent.category.LAUNCHER org.videolan.vlc >/dev/null 2>&1; then
+            player_function="android_vlc"
+        else
+            player_function="android_vlc_missing"
+        fi
+        ;;
+    *MINGW* | *WSL2*)
+        player_function="${ANI_CLI_PLAYER:-mpv.exe}" ;;
+    *)
+        player_function="${ANI_CLI_PLAYER:-mpv}" ;;
 esac
 
 no_detach="${ANI_CLI_NO_DETACH:-0}"
@@ -160,17 +188,24 @@ histfile="$hist_dir/ani-hsts"
 [ ! -f "$histfile" ] && : >"$histfile"
 search="${ANI_CLI_DEFAULT_SOURCE:-scrape}"
 
-# Parse argumen (tanpa MPV)
+# Parse argumen
 while [ $# -gt 0 ]; do
     case "$1" in
         -v | --vlc)
             case "$(uname -a | cut -d " " -f 1,3-)" in
-                *ndroid*) player_function="android_vlc" ;;
+                *ndroid*)
+                    if command -v am >/dev/null && am resolveActivity -c android.intent.category.LAUNCHER org.videolan.vlc >/dev/null 2>&1; then
+                        player_function="android_vlc"
+                    else
+                        player_function="android_vlc_missing"
+                    fi
+                    ;;
+                MINGW* | *WSL2*) player_function="vlc.exe" ;;
+                *ish*) player_function="iSH" ;;
                 *) player_function="vlc" ;;
             esac ;;
         -s | --syncplay)
             case "$(uname -s)" in
-                Darwin*) player_function="/Applications/Syncplay.app/Contents/MacOS/syncplay" ;;
                 MINGW* | *Msys)
                     export PATH="$PATH:/c/Program Files (x86)/Syncplay/"
                     player_function="syncplay.exe" ;;
@@ -189,7 +224,6 @@ while [ $# -gt 0 ]; do
         -D | --delete) : >"$histfile"; exit 0 ;;
         -l | --logview)
             case "$(uname -s)" in
-                Darwin*) log show --predicate 'process == "logger"' ;;
                 Linux*) journalctl -t ani-cli ;;
                 *) die "Log tidak didukung di sistem ini" ;;
             esac; exit 0 ;;
@@ -217,7 +251,7 @@ done
 [ "$use_external_menu" = "1" ] && multi_selection_flag="${ANI_CLI_MULTI_SELECTION:-"-multi-select"}"
 [ "$external_menu_normal_window" = "1" ] && external_menu_args="-normal-window"
 
-# Cek dependensi umum (tanpa mpv/flatpak/iina)
+# Cek dependensi
 dep_ch "curl" "sed" "grep" || true
 [ "$skip_intro" = 1 ] && (dep_ch "ani-skip" || true)
 dep_ch "fzf" || true
@@ -225,8 +259,8 @@ dep_ch "fzf" || true
 case "$player_function" in
     debug) ;;
     download) dep_ch "ffmpeg" "aria2c" ;;
-    android*|*iSH*) ;; # skip player check
-    *) ;; # biarkan sistem error jika VLC tidak ada
+    android_vlc|android_vlc_missing) ;;  # tidak perlu cek player di Android
+    *) dep_ch "$player_function" ;;
 esac
 
 # === FUNGSI INTI ===
@@ -249,14 +283,13 @@ get_links() {
             printf '%s' "$response" | sed -nE 's|.*"subtitles":\[\{"lang":"en","label":"English","default":"default","src":"([^"]*)".*|subtitle >\1|p' >"$cache_dir/suburl" ;;
         *) [ -n "$episode_link" ] && printf "%s\n" "$episode_link" ;;
     esac
-    printf "%s" "$*" | grep -q "tools.fast4speed.rsvp" && printf "Yt >$*\n"
     printf "\033[1;32m%s\033[0m Tautan berhasil diambil\n" "$provider_name" 1>&2
 }
 
 provider_init() {
     provider_name=$1
     provider_id=$(printf "%s" "$resp" | sed -n "$2" | head -1 | cut -d':' -f2 | sed 's/../&\
-/g' | sed 's/^79$/A/g;s/^7a$/B/g;s/^7b$/C/g;s/^7c$/D/g;s/^7d$/E/g;s/^7e$/F/g;s/^7f$/G/g;s/^70$/H/g;s/^71$/I/g;s/^72$/J/g;s/^73$/K/g;s/^74$/L/g;s/^75$/M/g;s/^76$/N/g;s/^77$/O/g;s/^68$/P/g;s/^69$/Q/g;s/^6a$/R/g;s/^6b$/S/g;s/^6c$/T/g;s/^6d$/U/g;s/^6e$/V/g;s/^6f$/W/g;s/^60$/X/g;s/^61$/Y/g;s/^62$/Z/g;s/^59$/a/g;s/^5a$/b/g;s/^5b$/c/g;s/^5c$/d/g;s/^5d$/e/g;s/^5e$/f/g;s/^5f$/g/g;s/^50$/h/g;s/^51$/i/g;s/^52$/j/g;s/^53$/k/g;s/^54$/l/g;s/^55$/m/g;s/^56$/n/g;s/^57$/o/g;s/^48$/p/g;s/^49$/q/g;s/^4a$/r/g;s/^4b$/s/g;s/^4c$/t/g;s/^4d$/u/g;s/^4e$/v/g;s/^4f$/w/g;s/^40$/x/g;s/^41$/y/g;s/^42$/z/g;s/^08$/0/g;s/^09$/1/g;s/^0a$/2/g;s/^0b$/3/g;s/^0c$/4/g;s/^0d$/5/g;s/^0e$/6/g;s/^0f$/7/g;s/^00$/8/g;s/^01$/9/g;s/^15$/-/g;s/^16$/./g;s/^67$/_/g;s/^46$/~/g;s/^02$/://g;s/^17$/\//g;s/^07$/?/g;s/^1b$/#/g;s/^63$/\[/g;s/^65$/\]/g;s/^78$/@/g;s/^19$/!/g;s/^1c$/\$/g;s/^1e$/&/g;s/^10$/(/g;s/^11$/)/g;s/^12$/\*/g;s/^13$/+/g;s/^14$/,/g;s/^03$/;/g;s/^05$/=/g;s/^1d$/%%/g' | tr -d '\n' | sed "s/\/clock/\/clock\.json/")
+/g' | sed 's/^79$/A/g;s/^7a$/B/g;s/^7b$/C/g;s/^7c$/D/g;s/^7d$/E/g;s/^7e$/F/g;s/^7f$/G/g;s/^70$/H/g;s/^71$/I/g;s/^72$/J/g;s/^73$/K/g;s/^74$/L/g;s/^75$/M/g;s/^76$/N/g;s/^77$/O/g;s/^68$/P/g;s/^69$/Q/g;s/^6a$/R/g;s/^6b$/S/g;s/^6c$/T/g;s/^6d$/U/g;s/^6e$/V/g;s/^6f$/W/g;s/^60$/X/g;s/^61$/Y/g;s/^62$/Z/g;s/^59$/a/g;s/^5a$/b/g;s/^5b$/c/g;s/^5c$/d/g;s/^5d$/e/g;s/^5e$/f/g;s/^5f$/g/g;s/^50$/h/g;s/^51$/i/g;s/^52$/j/g;s/^53$/k/g;s/^54$/l/g;s/^55$/m/g;s/^56$/n/g;s/^57$/o/g;s/^48$/p/g;s/^49$/q/g;s/^4a$/r/g;s/^4b$/s/g;s/^4c$/t/g;s/^4d$/u/g;s/^4e$/v/g;s/^4f$/w/g;s/^40$/x/g;s/^41$/y/g;s/^42$/z/g;s/^08$/0/g;s/^09$/1/g;s/^0a$/2/g;s/^0b$/3/g;s/^0c$/4/g;s/^0d$/5/g;s/^0e$/6/g;s/^0f$/7/g;s/^00$/8/g;s/^01$/9/g;s/^15$/-/g;s/^16$/./g;s/^67$/_/g;s/^46$/~/g;s/^02$/:/g;s/^17$/\//g;s/^07$/?/g;s/^1b$/#/g;s/^63$/\[/g;s/^65$/\]/g;s/^78$/@/g;s/^19$/!/g;s/^1c$/$/g;s/^1e$/&/g;s/^10$/\(/g;s/^11$/\)/g;s/^12$/*/g;s/^13$/+/g;s/^14$/,/g;s/^03$/;/g;s/^05$/=/g;s/^1d$/%/g' | tr -d '\n' | sed "s/\/clock/\/clock\.json/")
 }
 
 generate_link() {
@@ -309,7 +342,7 @@ search_anime() {
 }
 
 time_until_next_ep() {
-    animeschedule="https://animeschedule.net "
+    animeschedule="https://animeschedule.net  "
     query="$(printf "%s\n" "$*" | tr ' ' '+')"
     curl -s -G "$animeschedule/api/v3/anime" --data "q=${query}" | sed 's|"id"|\n|g' | sed -nE 's|.*,"route":"([^"]*)","premier.*|\1|p' | while read -r anime; do
         data=$(curl -s "$animeschedule/anime/$anime" | sed '1,/"anime-header-list-buttons-wrapper"/d' | sed -nE 's|.*countdown-time-raw" datetime="([^"]*)">.*|Next Raw Release: \1|p;s|.*countdown-time" datetime="([^"]*)">.*|Next Sub Release: \1|p;s|.*english-title">([^<]*)<.*|English Title: \1|p;s|.*main-title".*>([^<]*)<.*|Japanese Title: \1|p')
@@ -364,15 +397,59 @@ play_episode() {
     case "$player_function" in
         debug)
             printf "Semua tautan:\n%s\nTautan terpilih:\n%s\n" "$links" "$episode" ;;
-        android_vlc) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity -e "title" "${allanime_title}Episode ${ep_no}" >/dev/null 2>&1 & ;;
-        vlc*) nohup $player_function --http-referrer="${allanime_refr}" --play-and-exit --meta-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
-        *yncpla*) nohup $player_function "$episode" -- --force-media-title="${allanime_title}Episode ${ep_no}" $subs_flag $refr_flag >/dev/null 2>&1 & ;;
-        download) "$player_function" "$episode" "${allanime_title}Episode ${ep_no}" "$subtitle" ;;
-        catt) nohup catt cast "$episode" -s "$subtitle" >/dev/null 2>&1 & ;;
+
+        # ANDROID: VLC terinstal
+        android_vlc)
+            nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" \
+                -n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity \
+                -e "title" "${allanime_title}Episode ${ep_no}" >/dev/null 2>&1 &
+            ;;
+
+        # ANDROID: VLC tidak ada → tampilkan link
+        android_vlc_missing)
+            printf "\033[1;33mVLC tidak ditemukan di perangkat Android!\033[0m\n"
+            printf "Silakan instal VLC dari: https://play.google.com/store/apps/details?id=org.videolan.vlc\n"
+            printf "Atau buka tautan ini di browser:\n\033[1;36m%s\033[0m\n" "$episode"
+            sleep 3
+            nohup am start -a android.intent.action.VIEW -d "$episode" >/dev/null 2>&1 &
+            ;;
+
+        # WINDOWS / WSL
+        *mpv.exe)
+            if [ "$no_detach" = 0 ]; then
+                nohup "$player_function" $skip_flag --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" $subs_flag $refr_flag >/dev/null 2>&1 &
+            else
+                "$player_function" $skip_flag $subs_flag $refr_flag --force-media-title="${allanime_title}Episode ${ep_no}" "$episode"
+            fi
+            ;;
+
+        # LINUX ASLI
+        mpv)
+            if [ "$no_detach" = 0 ]; then
+                nohup mpv $skip_flag --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" $subs_flag $refr_flag >/dev/null 2>&1 &
+            else
+                mpv $skip_flag $subs_flag $refr_flag --force-media-title="${allanime_title}Episode ${ep_no}" "$episode"
+            fi
+            ;;
+
+        # FALLBACK LAIN (misal: --vlc di Linux)
+        vlc*)
+            nohup "$player_function" --http-referrer="${allanime_refr}" --play-and-exit --meta-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 &
+            ;;
+
+        *yncplay*)
+            nohup "$player_function" "$episode" -- --force-media-title="${allanime_title}Episode ${ep_no}" $subs_flag $refr_flag >/dev/null 2>&1 &
+            ;;
+        download)
+            "$player_function" "$episode" "${allanime_title}Episode ${ep_no}" "$subtitle" ;;
+        catt)
+            nohup catt cast "$episode" -s "$subtitle" >/dev/null 2>&1 & ;;
         iSH)
             printf "\e]8;;vlc://%s\a~~~~~~~~~~~~~~~~~~~~\n~ Ketuk untuk buka VLC ~\n~~~~~~~~~~~~~~~~~~~~\e]8;;\a\n" "$episode"
             sleep 5 ;;
-        *) nohup vlc --http-referrer="${allanime_refr}" --play-and-exit --meta-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
+        *)
+            nohup "$player_function" "$episode" >/dev/null 2>&1 &
+            ;;
     esac
     replay="$episode"
     unset episode
@@ -451,38 +528,6 @@ case "$search" in
         ;;
 esac
 
-# ========== MENU INTERAKTIF: NONTON / DOWNLOAD ==========
-if [ "$player_function" != "download" ]; then
-    printf "\n\033[1;33mApa yang ingin kamu lakukan?\033[0m\n"
-    printf "1) Nonton (VLC)\n"
-    printf "2) Download Video\n"
-    printf "3) Batal\n"
-    printf "Pilih (1/2/3): "
-    read pilihan
-
-    case "$pilihan" in
-        1)
-            printf "\033[1;32mMode: Nonton dengan VLC\033[0m\n"
-            # player_function sudah VLC
-            ;;
-        2)
-            printf "\033[1;32mMode: Download\033[0m\n"
-            player_function="download"
-            ;;
-        3)
-            printf "Dibatalkan.\n"
-            exit 0
-            ;;
-        *)
-            printf "\033[1;31mPilihan tidak valid!\033[0m\n"
-            exit 1
-            ;;
-    esac
-else
-    printf "\033[1;32mMode: Download (via argumen -d)\033[0m\n"
-fi
-
-# Lanjutkan ke pemutaran/unduh
 [ "$skip_intro" = 1 ] && mal_id="$(ani-skip -q "${skip_title:-${title}}")"
 tput cuu1 && tput el
 tput sc
