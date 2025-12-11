@@ -83,30 +83,22 @@ Opsi:
   -s, --syncplay        Tonton bersama teman via Syncplay
   -S, --select-nth      Pilih entri ke-n
   -q, --quality         Tentukan kualitas video
-  -v, --vlc             Gunakan VLC untuk memutar
-  -m, --mpv             Gunakan MPV untuk memutar
+  -v, --vlc             Gunakan VLC untuk memutar (default)
   -V, --version         Tampilkan versi skrip
   -h, --help            Tampilkan pesan bantuan ini
   -e, --episode         Tentukan nomor episode
   -r, --range           Tentukan rentang episode
   --dub                 Putar versi dub (bahasa lain)
   --rofi                Gunakan rofi alih-alih fzf
-  --skip                Lewati intro (hanya mpv)
+  --skip                Lewati intro
   --no-detach           Jangan jalankan player di latar
   --exit-after-play     Keluar setelah selesai memutar
   --skip-title <judul>  Judul untuk ani-skip
   -N, --nextep-countdown Tampilkan hitung mundur episode berikutnya
   -U, --update          Perbarui skrip ini
 
-Contoh penggunaan:
-  %s -q 720p banana fish
-  %s --skip --skip-title \"one piece\" -S 2 one piece
-  %s -d -e 2 cyberpunk edgerunners
-  %s --vlc cyberpunk edgerunners -q 1080p -e 4
-  %s --mpv blue lock -e 5
-  %s blue lock -e 5-6
-  %s -e \"5 6\" blue lock
-" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}" "${0##*/}"
+Catatan: MPV telah dihapus. Hanya VLC yang digunakan.
+" "${0##*/}" "${0##*/}" "${0##*/}"
     exit 0
 }
 
@@ -145,7 +137,7 @@ download_dir="${ANI_CLI_DOWNLOAD_DIR:-.}"
 log_episode="${ANI_CLI_LOG:-1}"
 quality="${ANI_CLI_QUALITY:-best}"
 
-# ======= Bagian player default (SEMUA PLATFORM DEFAULT KE VLC) =======
+# ======= Player default: HANYA VLC =========
 case "$(uname -a | cut -d " " -f 1,3-)" in
     *Darwin*) player_function="${ANI_CLI_PLAYER:-vlc}" ;;
     *ndroid*) player_function="${ANI_CLI_PLAYER:-android_vlc}" ;;
@@ -168,19 +160,13 @@ histfile="$hist_dir/ani-hsts"
 [ ! -f "$histfile" ] && : >"$histfile"
 search="${ANI_CLI_DEFAULT_SOURCE:-scrape}"
 
-# Parse argumen
+# Parse argumen (tanpa MPV)
 while [ $# -gt 0 ]; do
     case "$1" in
         -v | --vlc)
             case "$(uname -a | cut -d " " -f 1,3-)" in
                 *ndroid*) player_function="android_vlc" ;;
                 *) player_function="vlc" ;;
-            esac ;;
-        -m | --mpv)
-            case "$(uname -a | cut -d " " -f 1,3-)" in
-                *ndroid*) player_function="android_mpv" ;;
-                *MINGW* | *WSL2*) player_function="mpv.exe" ;;
-                *) player_function="mpv" ;;
             esac ;;
         -s | --syncplay)
             case "$(uname -s)" in
@@ -231,52 +217,16 @@ done
 [ "$use_external_menu" = "1" ] && multi_selection_flag="${ANI_CLI_MULTI_SELECTION:-"-multi-select"}"
 [ "$external_menu_normal_window" = "1" ] && external_menu_args="-normal-window"
 
-# =============================================
-# === PENAMBAHAN: PEMERIKSAAN PLAYER VLC/MPV ===
-# =============================================
-printf "\033[1;34mMemeriksa player...\033[0m\n"
-sleep 1
-
-# Safety fallback: pastikan player_function tidak kosong
-case "$(uname -a | cut -d " " -f 1,3-)" in
-    *ndroid*) player_function="${player_function:-android_vlc}" ;;
-    *) player_function="${player_function:-vlc}" ;;
-esac
-
-player_cmd="${player_function%% *}"
-
-# Cek hanya untuk player CLI (bukan android_ atau iSH)
-if ! echo "$player_function" | grep -qE '^(android_|iSH)'; then
-    if ! command -v "$player_cmd" >/dev/null 2>&1; then
-        printf "\033[1;31mPlayer \"$player_cmd\" tidak ditemukan! Mengalihkan ke halaman unduh VLC...\033[0m\n"
-        sleep 2
-        case "$(uname -s)" in
-            Darwin*) open "https://www.videolan.org/vlc/" ;;
-            Linux*) xdg-open "https://www.videolan.org/vlc/" ;;
-            MINGW* | *MSYS* | *WSL*) start "https://www.videolan.org/vlc/" ;;
-            *) printf "Silakan unduh VLC dari: https://www.videolan.org/vlc/\n" ;;
-        esac
-        exit 1
-    else
-        printf "\033[1;32mPlayer: $player_cmd\033[0m\n"
-        sleep 1
-    fi
-else
-    printf "\033[1;33mMenggunakan player: $player_function (tidak diverifikasi via CLI)\033[0m\n"
-    sleep 1
-fi
-
-# Cek dependensi umum
+# Cek dependensi umum (tanpa mpv/flatpak/iina)
 dep_ch "curl" "sed" "grep" || true
 [ "$skip_intro" = 1 ] && (dep_ch "ani-skip" || true)
 dep_ch "fzf" || true
 
-# Cek dependensi khusus player (kecuali android/iSH)
 case "$player_function" in
     debug) ;;
     download) dep_ch "ffmpeg" "aria2c" ;;
-    android*|*iSH*) ;;
-    *) ;;  # Sudah diverifikasi di atas
+    android*|*iSH*) ;; # skip player check
+    *) ;; # biarkan sistem error jika VLC tidak ada
 esac
 
 # === FUNGSI INTI ===
@@ -414,21 +364,7 @@ play_episode() {
     case "$player_function" in
         debug)
             printf "Semua tautan:\n%s\nTautan terpilih:\n%s\n" "$links" "$episode" ;;
-        mpv*|mpv)
-            if [ "$no_detach" = 0 ]; then
-                nohup $player_function $skip_flag --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" $subs_flag $refr_flag >/dev/null 2>&1 &
-            else
-                $player_function $skip_flag $subs_flag $refr_flag --force-media-title="${allanime_title}Episode ${ep_no}" "$episode"
-                mpv_exitcode=$?
-                [ "$exit_after_play" = 1 ] && [ -z "$range" ] && exit "$mpv_exitcode"
-            fi ;;
-        android_mpv) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n is.xyz.mpv/.MPVActivity >/dev/null 2>&1 & ;;
         android_vlc) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity -e "title" "${allanime_title}Episode ${ep_no}" >/dev/null 2>&1 & ;;
-        *iina*)
-            [ -n "$subs_flag" ] && subs_flag="--mpv-${subs_flag#--}"
-            [ -n "$refr_flag" ] && refr_flag="--mpv-${refr_flag#--}"
-            nohup $player_function --no-stdin --keep-running --mpv-force-media-title="${allanime_title}Episode ${ep_no}" $subs_flag $refr_flag "$episode" >/dev/null 2>&1 & ;;
-        flatpak_mpv) flatpak run io.mpv.Mpv --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" $subs_flag $refr_flag >/dev/null 2>&1 & ;;
         vlc*) nohup $player_function --http-referrer="${allanime_refr}" --play-and-exit --meta-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
         *yncpla*) nohup $player_function "$episode" -- --force-media-title="${allanime_title}Episode ${ep_no}" $subs_flag $refr_flag >/dev/null 2>&1 & ;;
         download) "$player_function" "$episode" "${allanime_title}Episode ${ep_no}" "$subtitle" ;;
@@ -436,7 +372,7 @@ play_episode() {
         iSH)
             printf "\e]8;;vlc://%s\a~~~~~~~~~~~~~~~~~~~~\n~ Ketuk untuk buka VLC ~\n~~~~~~~~~~~~~~~~~~~~\e]8;;\a\n" "$episode"
             sleep 5 ;;
-        *) nohup $player_function "$episode" >/dev/null 2>&1 & ;;
+        *) nohup vlc --http-referrer="${allanime_refr}" --play-and-exit --meta-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
     esac
     replay="$episode"
     unset episode
@@ -515,6 +451,38 @@ case "$search" in
         ;;
 esac
 
+# ========== MENU INTERAKTIF: NONTON / DOWNLOAD ==========
+if [ "$player_function" != "download" ]; then
+    printf "\n\033[1;33mApa yang ingin kamu lakukan?\033[0m\n"
+    printf "1) Nonton (VLC)\n"
+    printf "2) Download Video\n"
+    printf "3) Batal\n"
+    printf "Pilih (1/2/3): "
+    read pilihan
+
+    case "$pilihan" in
+        1)
+            printf "\033[1;32mMode: Nonton dengan VLC\033[0m\n"
+            # player_function sudah VLC
+            ;;
+        2)
+            printf "\033[1;32mMode: Download\033[0m\n"
+            player_function="download"
+            ;;
+        3)
+            printf "Dibatalkan.\n"
+            exit 0
+            ;;
+        *)
+            printf "\033[1;31mPilihan tidak valid!\033[0m\n"
+            exit 1
+            ;;
+    esac
+else
+    printf "\033[1;32mMode: Download (via argumen -d)\033[0m\n"
+fi
+
+# Lanjutkan ke pemutaran/unduh
 [ "$skip_intro" = 1 ] && mal_id="$(ani-skip -q "${skip_title:-${title}}")"
 tput cuu1 && tput el
 tput sc
